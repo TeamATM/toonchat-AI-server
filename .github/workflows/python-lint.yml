@@ -1,0 +1,39 @@
+name: Python Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install dependencies
+        run: pip install black flake8
+
+      - name: Lint code
+        run: |
+          black --check .
+          flake8 --exclude .git,__pycache__,venv --filename="*.py"
+
+      - name: Fail if linting errors
+        run: |
+          if [ $? -ne 0 ]; then
+            echo "Linting failed. Please fix the linting errors."
+            exit 1
+          fi
