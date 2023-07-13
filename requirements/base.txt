@@ -10,3 +10,4 @@ datasets==2.13.1
 sentencepiece==0.1.99
 redis==4.6.0
 pydantic_settings==2.0.1
+orjson==3.9.2
