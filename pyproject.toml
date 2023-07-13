@@ -14,6 +14,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long, handled by black
+    "E402",  # Module level import not at top of file
     "B008",  # do not perform function calls in argument defaults
     "C901",  # complexity
 ]
