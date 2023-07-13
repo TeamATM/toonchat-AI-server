@@ -1,11 +1,20 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from os import environ
+from os.path import dirname
+
+environ["ROOT_DIR"] = dirname(dirname(__file__))
+
 from redis import asyncio as aioredis
 from fastapi import FastAPI
 
 from app.config import app_configs, settings
 from app.inference.router import router as inference_router
+from app.llm.utils import load_lora
+
+
+model, tokenizer = load_lora(settings.PEFT_MODEL_DIR.value)
 
 
 @asynccontextmanager
