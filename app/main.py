@@ -1,15 +1,34 @@
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+from redis import asyncio as aioredis
 from fastapi import FastAPI
 
-app = FastAPI()
+from app.config import app_configs, settings
+from app.inference.router import router as inference_router
+
+
+@asynccontextmanager
+async def lifespan(_application: FastAPI) -> AsyncGenerator:
+    # Start
+    pool = aioredis.ConnectionPool.from_url(
+        settings.REDIS_URL, max_connections=10, decode_responses=True
+    )
+    redis_client = aioredis.Redis(connection_pool=pool)
+
+    yield
+
+    # Stop
+    await redis_client.close()
+
+
+app = FastAPI(**app_configs, lifespan=lifespan)
 
 
 # Define API routes and other application logic here
-@app.get("/")
-def root():
-    return {"message": "Hello, World!"}
+@app.get("/healthcheck", include_in_schema=False)
+async def healthcheck():
+    return {"status": "ok"}
 
 
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+app.include_router(inference_router, prefix="/inference")
