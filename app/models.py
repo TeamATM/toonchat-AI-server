@@ -30,6 +30,21 @@ class SingletonMetaClass(type):
         return cls._instances[cls]
 
 
+class RequestCounter(metaclass=SingletonMetaClass):
+    from asyncio import Lock
+
+    count = 0
+    async_lock = Lock()
+
+    async def increase(self):
+        async with self.async_lock:
+            self.count += 1
+
+    async def decrease(self):
+        async with self.async_lock:
+            self.count -= 1
+
+
 class ORJSONMoel(BaseModel):
     class Config:
         json_loads = orjson.loads
