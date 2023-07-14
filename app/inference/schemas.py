@@ -7,5 +7,9 @@ class RequestData(ORJSONMoel):
     input: str
 
 
-class InferenceResponse(ORJSONMoel):
+class RedisKeyResponse(ORJSONMoel):
     redis_key: UUID4
+
+
+class CompletionResponse(ORJSONMoel):
+    result: str
