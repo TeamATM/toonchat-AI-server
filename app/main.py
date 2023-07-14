@@ -4,6 +4,7 @@ from typing import AsyncGenerator
 from os import environ
 from os.path import dirname, join
 
+
 environ["ROOT_DIR"] = dirname(dirname(__file__))
 
 from redis import asyncio as aioredis

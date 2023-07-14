@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from app.inference.schemas import RequestData, RedisKeyResponse, CompletionResponse
 from app.models import RequestCounter
 from app.llm.models import LoadedLLM
