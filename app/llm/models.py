@@ -43,6 +43,7 @@ class LoadedLLM(metaclass=SingletonMetaClass):
 
     isLoaded = False
     isRunning = False
+    do_stop = False
 
     def __init__(
         self,
@@ -66,11 +67,17 @@ class LoadedLLM(metaclass=SingletonMetaClass):
                 for stop_word in stopping_words
             ]
             self.stopping_criteria = StoppingCriteriaList(
-                [StoppingCriteriaSub(stops=stop_words_ids, callback=self.on_stop_generate)]
+                [
+                    StoppingCriteriaSub(stops=stop_words_ids, callback=self.on_stop_generate),
+                    _StopEverythingStoppingCriteria(self),
+                ]
             )
 
     def on_stop_generate(self):
         self.isRunning = False
+
+    def stop_generate(self):
+        self.do_stop = True
 
     def generate(self, history, x, args: dict = None):
         # if self.isRunning:
@@ -95,7 +102,21 @@ class LoadedLLM(metaclass=SingletonMetaClass):
             else args
         )
         self.isRunning = True
+        self.do_stop = False
         thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
+
         thread.start()
 
         return self.streamer
+
+
+class _StopEverythingStoppingCriteria(StoppingCriteria):
+    def __init__(self, loaded_llm: LoadedLLM) -> None:
+        self.loaded_llm = loaded_llm
+
+    def __call__(self, input_ids, scores) -> bool:
+        if self.loaded_llm.do_stop:
+            self.loaded_llm.do_stop = False
+            return True
+
+        return False
