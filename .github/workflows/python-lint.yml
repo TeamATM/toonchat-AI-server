@@ -28,8 +28,7 @@ jobs:
 
       - name: Lint code
         run: |
-          black --check .
-          ruff check .
+          black --check . && ruff check .
 
       - name: Fail if linting errors
         run: |
