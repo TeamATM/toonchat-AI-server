@@ -31,7 +31,7 @@ class MockLLM(BaseLLM):
     def generate(self, history: str, x: str, args: dict = None):
         import time
 
-        for s in (history + x).split():
+        for s in ["This", " is", " a", " mock", " result"]:
             yield s
             time.sleep(1)
 
@@ -99,7 +99,7 @@ class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
         generate_kwargs = (
             dict(
                 **self.tokenizer(
-                    f"{history}Human: {x}\nRemon:", return_tensors="pt", return_token_type_ids=False
+                    f"{history}\nRemon:", return_tensors="pt", return_token_type_ids=False
                 ).to(0),
                 max_time=20,  # 최대 생성 시간 (s)
                 streamer=self.streamer,
