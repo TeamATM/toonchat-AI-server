@@ -16,12 +16,7 @@ class Config(BaseSettings):
 
     REDIS_URL: str
 
-    SITE_DOMAIN: str
-
     ENVIRONMENT: Environment
-
-    CORS_ORIGINS: list[str]
-    CORS_HEADERS: list[str]
 
     APP_VERSION: str
 
