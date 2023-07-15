@@ -4,7 +4,6 @@ transformers @ git+https://github.com/huggingface/transformers.git@abaca9f9432a8
 pydantic==2.0.2
 bitsandbytes==0.39.1
 datasets==2.13.1
-fastapi==0.100.0
 python-dotenv==1.0.0
 datasets==2.13.1
 sentencepiece==0.1.99
