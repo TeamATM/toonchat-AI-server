@@ -22,6 +22,20 @@ class LLMConfig:
         self.stopping_words = stopping_words
 
 
+class BaseLLM:
+    def generate(self, history: str, x: str, args: dict = None):
+        raise NotImplementedError
+
+
+class MockLLM(BaseLLM):
+    def generate(self, history: str, x: str, args: dict = None):
+        import time
+
+        for s in (history + x).split():
+            yield s
+            time.sleep(1)
+
+
 class StoppingCriteriaSub(StoppingCriteria):
     def __init__(self, stops=None, callback: Callable = None):
         super().__init__()
@@ -38,7 +52,7 @@ class StoppingCriteriaSub(StoppingCriteria):
         return False
 
 
-class LoadedLLM(metaclass=SingletonMetaClass):
+class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
     from transformers import PreTrainedTokenizerBase, PreTrainedModel
 
     isLoaded = False

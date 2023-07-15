@@ -44,7 +44,7 @@ def load_lora(model_config: LLMConfig, tag: str = None):
 
     model.eval()
 
-    loaded_model = LoadedLLM(
+    loaded_model: LoadedLLM = LoadedLLM(
         model=model, tokenizer=tokenizer, stopping_words=model_config.stopping_words
     )
     loaded_model_dict[tag] = loaded_model
