@@ -36,12 +36,18 @@ class StreamConsumer:
             for _, messages in response:
                 for message_id, message in messages:
                     k, v = map(bytes.decode, message.popitem())
-                    items.append((message_id, k, v))
+                    items.append((message_id.decode("utf-8"), k, v))
             return items
         return response
 
     async def delete_message(self, stream_channel: KeyT, message_id: StreamIdT):
         await self.redis_client.xdel(stream_channel, message_id)
 
-    async def ack_message(self, stream_name: str, group_name: str, *ids: StreamIdT):
-        await self.redis_client.xack(stream_name, group_name, ids)
+    async def ack_message(self, stream_name: str, group_name: str, ids: list | str):
+        if type(ids) is str:
+            await self.redis_client.xack(stream_name, group_name, ids)
+        else:
+            pipe = self.redis_client.pipeline()
+            for id in ids:
+                pipe.xack(stream_name, group_name, id)
+            await pipe.execute()
