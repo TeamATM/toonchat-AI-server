@@ -1,9 +1,10 @@
-from transformers import StoppingCriteria
-from app.llm.constants import ModelType
-from app.models import SingletonMetaClass
-from threading import Thread
-from typing import Callable
 import torch
+from typing import Callable
+from threading import Thread
+from transformers import StoppingCriteria
+
+from app.models import SingletonMetaClass
+from app.llm.constants import ModelType
 
 
 class LLMConfig:
@@ -120,7 +121,6 @@ class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
         thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
 
         thread.start()
-
         return self.streamer
 
 

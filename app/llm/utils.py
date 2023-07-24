@@ -1,14 +1,14 @@
+from os import environ
+from os.path import join
 from peft import PeftModel, PeftConfig
 from torch import bfloat16
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
-from app.llm.models import LoadedLLM, LLMConfig
+from app.llm.models import LoadedLLM, LLMConfig, MockLLM, BaseLLM
 from app.llm.constants import ModelType
 
-loaded_model_dict = {}
 
-
-def load_lora(model_config: LLMConfig, tag: str = None):
+def load_lora(model_config: LLMConfig):
     bnb_config = (
         BitsAndBytesConfig(
             load_in_4bit=True,
@@ -27,10 +27,6 @@ def load_lora(model_config: LLMConfig, tag: str = None):
         else:
             base_model_id = model_config.base_model_path
 
-        tag = tag if tag else base_model_id
-        if tag in loaded_model_dict:
-            return loaded_model_dict[tag]
-
         model = AutoModelForCausalLM.from_pretrained(
             base_model_id, quantization_config=bnb_config, device_map={"": 0}
         )
@@ -47,6 +43,21 @@ def load_lora(model_config: LLMConfig, tag: str = None):
     loaded_model: LoadedLLM = LoadedLLM(
         model=model, tokenizer=tokenizer, stopping_words=model_config.stopping_words
     )
-    loaded_model_dict[tag] = loaded_model
 
     return loaded_model
+
+
+def load_model() -> BaseLLM:
+    if "MOCKING" in environ and environ["MOCKING"]:
+        model = MockLLM()
+    else:
+        model = load_lora(
+            LLMConfig(
+                ModelType.LoRA,
+                join("models", "checkpoint-2200"),
+                join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
+                stopping_words=["\n\n", "\nHuman:"],
+            ),
+        )
+
+    return model
