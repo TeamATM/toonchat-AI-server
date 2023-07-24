@@ -1,17 +1,13 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.constants import Environment
 
-
-class Settings(BaseSettings):
+class CeleryConfig(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
+        env_file=".env.celery", env_file_encoding="utf-8", extra="allow"
     )
 
-    ENVIRONMENT: Environment
+    BROKER_URI: str
+    BACKEND_URI: str | None
 
-    APP_VERSION: str
 
-
-settings = Settings()
+config = CeleryConfig()
