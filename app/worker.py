@@ -1,4 +1,4 @@
-from os import chdir
+from os import chdir, environ, name
 from os.path import dirname
 
 chdir(dirname(dirname(__file__)))
@@ -6,6 +6,12 @@ chdir(dirname(dirname(__file__)))
 from celery import Celery
 from app.config import config
 
+if __name__ != "__main__":
+    environ["FORKED_BY_MULTIPROCESSING"] = "1"
+    if name != "nt":
+        from billiard import context
+
+        context._force_start_method("spawn")
 
 app = Celery(
     "toonchat", broker=config.BROKER_URI, backend=config.BACKEND_URI, include=["app.tasks"]
