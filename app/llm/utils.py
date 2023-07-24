@@ -1,9 +1,13 @@
 from os import environ
-from os.path import join
-from peft import PeftModel, PeftConfig
+
 from torch import bfloat16
+from peft import PeftModel, PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
+import yaml
+from pathlib import Path
+
+from app.utils import replace_all, print_red
 from app.llm.models import LoadedLLM, LLMConfig, MockLLM, BaseLLM
 from app.llm.constants import ModelType
 
@@ -41,23 +45,43 @@ def load_lora(model_config: LLMConfig):
     model.eval()
 
     loaded_model: LoadedLLM = LoadedLLM(
-        model=model, tokenizer=tokenizer, stopping_words=model_config.stopping_words
+        model,
+        tokenizer,
+        prompt_template_name=model_config.prompt_fname,
+        stopping_words=model_config.stopping_words,
     )
 
     return loaded_model
 
 
-def load_model() -> BaseLLM:
+def load_model(llm_config: LLMConfig) -> BaseLLM:
     if "MOCKING" in environ and environ["MOCKING"]:
         model = MockLLM()
     else:
-        model = load_lora(
-            LLMConfig(
-                ModelType.LoRA,
-                join("models", "checkpoint-2200"),
-                join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
-                stopping_words=["\n\n", "\nHuman:"],
-            ),
-        )
+        model = load_lora(llm_config)
 
     return model
+
+
+def load_prompt(fname):
+    file_path = Path(f"app/prompts/{fname}.yaml")
+    if not file_path.exists():
+        print_red("Template is Empty!")
+        return ""
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+        output = ""
+        if "context" in data:
+            output += data["context"]
+
+        replacements = {
+            "<|user|>": data["user"],
+            "<|sep|>": data["sep"],
+            "<|bot|>": data["bot"],
+        }
+
+        output += replace_all(
+            data["turn_template"].split("<|bot-message|>")[0], replacements
+        ).strip()
+        return {"prompt": output, "sep": data["sep"]}

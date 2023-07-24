@@ -1,0 +1,5 @@
+user: "Human:"
+bot: "Remon:"
+sep: "\n"
+turn_template: "<|user|> <|user-message|><|sep|><|bot|> <|bot-message|><|sep|>"
+context: ""
