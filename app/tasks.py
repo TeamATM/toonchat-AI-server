@@ -3,7 +3,7 @@ from celery.app.task import Context
 from celery import Task, states
 
 from app.worker import app
-from app.llm.utils import load_model
+from app.llm.utils import load_model, load_lora
 from app.llm.models import BaseLLM, LLMConfig
 from app.llm.constants import ModelType
 
@@ -25,15 +25,15 @@ class InferenceTask(Task):
         """
         if not self.model:
             print("Load Model")
-            self.model = load_model(
-                LLMConfig(
-                    ModelType.LoRA,
-                    join("models", "checkpoint-2200"),
-                    "Remon",
-                    join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
-                    stopping_words=["\n\n", "\nHuman:"],
-                )
+            llm_config = LLMConfig(
+                ModelType.LoRA,
+                join("models", "checkpoint-2200"),
+                "Remon",
+                join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
+                stopping_words=["\n\n", "\nHuman:"],
             )
+            self.model = load_model(llm_config)
+            load_lora(self.model, llm_config.adapter_path)
 
         return super().__call__(*args, **kwargs)
 

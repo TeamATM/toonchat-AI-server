@@ -5,21 +5,20 @@ from transformers import StoppingCriteria
 
 from app.models import SingletonMetaClass
 from app.llm.constants import ModelType
-from app.llm.utils import load_prompt
 
 
 class LLMConfig:
     def __init__(
         self,
         model_type: ModelType,
-        adaptor_path: str,
+        adapter_path: str,
         prompt_fname: str = None,
         base_model_path: str | None = None,
         load_in_4bit: bool = True,
         stopping_words: list | None = None,
     ) -> None:
         self.model_type = model_type
-        self.adaptor_path = adaptor_path
+        self.adapter_path = adapter_path
         self.prompt_fname = prompt_fname
         self.base_model_path = base_model_path
         self.load_in_4bit = load_in_4bit
@@ -67,14 +66,14 @@ class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
-        prompt_template_name: str,
+        prompt_config: str,
         stopping_words: list = None,
     ) -> None:
         from transformers import TextIteratorStreamer, StoppingCriteriaList
 
         self.model = model
         self.tokenizer = tokenizer
-        self.prompt_config = load_prompt(prompt_template_name)
+        self.prompt_config = prompt_config
         self.isLoaded = True
         self.stopping_criteria = None
         self.streamer = TextIteratorStreamer(
