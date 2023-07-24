@@ -11,13 +11,15 @@ class LLMConfig:
     def __init__(
         self,
         model_type: ModelType,
-        model_path: str,
+        adapter_path: str,
+        prompt_fname: str = None,
         base_model_path: str | None = None,
         load_in_4bit: bool = True,
         stopping_words: list | None = None,
     ) -> None:
         self.model_type = model_type
-        self.adaptor_path = model_path
+        self.adapter_path = adapter_path
+        self.prompt_fname = prompt_fname
         self.base_model_path = base_model_path
         self.load_in_4bit = load_in_4bit
         self.stopping_words = stopping_words
@@ -64,12 +66,14 @@ class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizerBase,
+        prompt_config: str,
         stopping_words: list = None,
     ) -> None:
         from transformers import TextIteratorStreamer, StoppingCriteriaList
 
         self.model = model
         self.tokenizer = tokenizer
+        self.prompt_config = prompt_config
         self.isLoaded = True
         self.stopping_criteria = None
         self.streamer = TextIteratorStreamer(
@@ -94,27 +98,27 @@ class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
     def stop_generate(self):
         self.do_stop = True
 
-    def generate(self, history, x, args: dict = None):
-        # if self.isRunning:
-        #     raise
-        generate_kwargs = (
-            dict(
-                **self.tokenizer(
-                    f"{history}\nRemon:", return_tensors="pt", return_token_type_ids=False
-                ).to(0),
-                max_time=20,  # 최대 생성 시간 (s)
-                streamer=self.streamer,
-                max_new_tokens=512,
-                do_sample=True,
-                early_stopping=True,
-                eos_token_id=2,
-                stopping_criteria=self.stopping_criteria,
-                temperature=0.1,
-                # top_p=top_p,
-                # top_k=top_k
-            )
-            if not args
-            else args
+    def generate(self, history, x, bot=None, **kwargs):
+        prompt = self.prompt_config["prompt"].replace("<|user-message|>", x)
+        if bot:
+            prompt = prompt.replace("<|bot|>", bot)
+        generate_kwargs = dict(
+            **self.tokenizer(
+                f"{history}{self.prompt_config['sep']}{prompt}",
+                return_tensors="pt",
+                return_token_type_ids=False,
+            ).to(0),
+            max_time=20,  # 최대 생성 시간 (s)
+            streamer=self.streamer,
+            max_new_tokens=512,
+            do_sample=True,
+            early_stopping=True,
+            eos_token_id=2,
+            stopping_criteria=self.stopping_criteria,
+            temperature=0.1,
+            # top_p=top_p,
+            # top_k=top_k,
+            **kwargs,
         )
         self.isRunning = True
         self.do_stop = False

@@ -1,0 +1,5 @@
+user: "Human:"
+bot: "<|bot|>:"
+sep: " "
+turn_template: "<|user|> <|user-message|><|sep|><|bot|> <|bot-message|><|endoftext|>"
+context: "아래 프롬프트는 답변할 질문, 완료할 과제 또는 응답할 대화입니다. 어떤 것인지 결정하고 적절한 응답을 작성하세요. "
