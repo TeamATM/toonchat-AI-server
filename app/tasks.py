@@ -1,9 +1,11 @@
+from os.path import join
 from celery.app.task import Context
 from celery import Task, states
 
 from app.worker import app
-from app.llm.utils import load_model
-from app.llm.models import BaseLLM
+from app.llm.utils import load_model, load_lora
+from app.llm.models import BaseLLM, LLMConfig
+from app.llm.constants import ModelType
 
 
 class InferenceTask(Task):
@@ -23,16 +25,24 @@ class InferenceTask(Task):
         """
         if not self.model:
             print("Load Model")
-            self.model = load_model()
+            llm_config = LLMConfig(
+                ModelType.LoRA,
+                join("models", "checkpoint-2200"),
+                "Remon",
+                join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
+                stopping_words=["\n\n", "\nHuman:"],
+            )
+            self.model = load_model(llm_config)
+            load_lora(self.model, llm_config.adapter_path)
 
         return super().__call__(*args, **kwargs)
 
 
-def publish(task: Task, output: str, state: str):
+def publish(task: Task, output: str, state: str, **kwargs):
     request: Context = task.request
     with task.app.amqp.producer_pool.acquire(block=True) as producer:
         producer.publish(
-            {"taskId": request.id, "status": state, "result": (output,)},
+            {"taskId": request.id, "status": state, "result": (output,), **kwargs},
             exchange="response",
             routing_key=request.reply_to,
             correlation_id=request.id,
