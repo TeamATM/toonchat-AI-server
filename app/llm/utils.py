@@ -19,6 +19,7 @@ def load_lora(model: LoadedLLM, adapter_path: str):
 def load_model(llm_config: LLMConfig) -> BaseLLM:
     if "MOCKING" in environ and environ["MOCKING"]:
         model = MockLLM()
+        return model
     else:
         bnb_config = (
             BitsAndBytesConfig(
