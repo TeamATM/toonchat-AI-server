@@ -1,7 +1,6 @@
-import torch
+import os
 from typing import Callable
 from threading import Thread
-from transformers import StoppingCriteria
 
 from app.models import SingletonMetaClass
 from app.llm.constants import ModelType
@@ -26,6 +25,8 @@ class LLMConfig:
 
 
 class BaseLLM:
+    model = None
+
     def generate(self, history: str, x: str, args: dict = None):
         raise NotImplementedError
 
@@ -39,102 +40,104 @@ class MockLLM(BaseLLM):
             time.sleep(1)
 
 
-class StoppingCriteriaSub(StoppingCriteria):
-    def __init__(self, stops=None, callback: Callable = None):
-        super().__init__()
-        self.stops = [stop.to("cuda") for stop in stops] if stops else []
-        self.callback = callback
+if not os.environ["MOCKING"]:
+    import torch
+    from transformers import StoppingCriteria
 
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
-        for stop in self.stops:
-            if torch.all((stop == input_ids[0][-len(stop) :])).item():
-                if self.callback:
-                    self.callback()
-                return True
+    class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
+        from transformers import PreTrainedTokenizerBase, PreTrainedModel
 
-        return False
+        isLoaded = False
+        isRunning = False
+        do_stop = False
 
+        def __init__(
+            self,
+            model: PreTrainedModel,
+            tokenizer: PreTrainedTokenizerBase,
+            prompt_config: str,
+            stopping_words: list = None,
+        ) -> None:
+            from transformers import TextIteratorStreamer, StoppingCriteriaList
 
-class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
-    from transformers import PreTrainedTokenizerBase, PreTrainedModel
-
-    isLoaded = False
-    isRunning = False
-    do_stop = False
-
-    def __init__(
-        self,
-        model: PreTrainedModel,
-        tokenizer: PreTrainedTokenizerBase,
-        prompt_config: str,
-        stopping_words: list = None,
-    ) -> None:
-        from transformers import TextIteratorStreamer, StoppingCriteriaList
-
-        self.model = model
-        self.tokenizer = tokenizer
-        self.prompt_config = prompt_config
-        self.isLoaded = True
-        self.stopping_criteria = None
-        self.streamer = TextIteratorStreamer(
-            tokenizer, timeout=10, skip_prompt=True, skip_special_tokens=True
-        )
-
-        if stopping_words:
-            stop_words_ids = [
-                tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
-                for stop_word in stopping_words
-            ]
-            self.stopping_criteria = StoppingCriteriaList(
-                [
-                    StoppingCriteriaSub(stops=stop_words_ids, callback=self.on_stop_generate),
-                    _StopEverythingStoppingCriteria(self),
-                ]
+            self.model = model
+            self.tokenizer = tokenizer
+            self.prompt_config = prompt_config
+            self.isLoaded = True
+            self.stopping_criteria = None
+            self.streamer = TextIteratorStreamer(
+                tokenizer, timeout=10, skip_prompt=True, skip_special_tokens=True
             )
 
-    def on_stop_generate(self):
-        self.isRunning = False
+            if stopping_words:
+                stop_words_ids = [
+                    tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
+                    for stop_word in stopping_words
+                ]
+                self.stopping_criteria = StoppingCriteriaList(
+                    [
+                        StoppingCriteriaSub(stops=stop_words_ids, callback=self.on_stop_generate),
+                        _StopEverythingStoppingCriteria(self),
+                    ]
+                )
 
-    def stop_generate(self):
-        self.do_stop = True
+        def on_stop_generate(self):
+            self.isRunning = False
 
-    def generate(self, history, x, bot=None, **kwargs):
-        prompt = self.prompt_config["prompt"].replace("<|user-message|>", x)
-        if bot:
-            prompt = prompt.replace("<|bot|>", bot)
-        generate_kwargs = dict(
-            **self.tokenizer(
-                f"{history}{self.prompt_config['sep']}{prompt}",
-                return_tensors="pt",
-                return_token_type_ids=False,
-            ).to(0),
-            max_time=20,  # 최대 생성 시간 (s)
-            streamer=self.streamer,
-            max_new_tokens=512,
-            do_sample=True,
-            early_stopping=True,
-            eos_token_id=2,
-            stopping_criteria=self.stopping_criteria,
-            temperature=0.1,
-            # top_p=top_p,
-            # top_k=top_k,
-            **kwargs,
-        )
-        self.isRunning = True
-        self.do_stop = False
-        thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
+        def stop_generate(self):
+            self.do_stop = True
 
-        thread.start()
-        return self.streamer
+        def generate(self, history, x, bot=None, **kwargs):
+            prompt = self.prompt_config["prompt"].replace("<|user-message|>", x)
+            if bot:
+                prompt = prompt.replace("<|bot|>", bot)
+            generate_kwargs = dict(
+                **self.tokenizer(
+                    f"{history}{self.prompt_config['sep']}{prompt}",
+                    return_tensors="pt",
+                    return_token_type_ids=False,
+                ).to(0),
+                max_time=20,  # 최대 생성 시간 (s)
+                streamer=self.streamer,
+                max_new_tokens=512,
+                do_sample=True,
+                early_stopping=True,
+                eos_token_id=2,
+                stopping_criteria=self.stopping_criteria,
+                temperature=0.1,
+                # top_p=top_p,
+                # top_k=top_k,
+                **kwargs,
+            )
+            self.isRunning = True
+            self.do_stop = False
+            thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
 
+            thread.start()
+            return self.streamer
 
-class _StopEverythingStoppingCriteria(StoppingCriteria):
-    def __init__(self, loaded_llm: LoadedLLM) -> None:
-        self.loaded_llm = loaded_llm
+    class StoppingCriteriaSub(StoppingCriteria):
+        def __init__(self, stops=None, callback: Callable = None):
+            super().__init__()
+            self.stops = [stop.to("cuda") for stop in stops] if stops else []
+            self.callback = callback
 
-    def __call__(self, input_ids, scores) -> bool:
-        if self.loaded_llm.do_stop:
-            self.loaded_llm.do_stop = False
-            return True
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+            for stop in self.stops:
+                if torch.all((stop == input_ids[0][-len(stop) :])).item():
+                    if self.callback:
+                        self.callback()
+                    return True
 
-        return False
+            return False
+
+    class _StopEverythingStoppingCriteria(StoppingCriteria):
+        def __init__(self, loaded_llm: LoadedLLM) -> None:
+            self.loaded_llm = loaded_llm
+
+        def __call__(self, input_ids, scores) -> bool:
+            if self.loaded_llm.do_stop:
+                self.loaded_llm.do_stop = False
+                return True
+
+            return False
