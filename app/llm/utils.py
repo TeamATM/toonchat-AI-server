@@ -1,23 +1,29 @@
 from os import environ
 
-from torch import bfloat16
-from peft import PeftModel, PeftConfig
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-
 import yaml
 from pathlib import Path
 
 from app.utils import replace_all, print_red
-from app.llm.models import LoadedLLM, LLMConfig, MockLLM, BaseLLM
+
+if environ["MOCKING"]:
+    from app.llm.models import MockLLM
+else:
+    from torch import bfloat16
+    from peft import PeftModel, PeftConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+    from app.llm.models import LoadedLLM
+
+
+from app.llm.models import LLMConfig, BaseLLM
 from app.llm.constants import ModelType
 
 
-def load_lora(model: LoadedLLM, adapter_path: str):
+def load_lora(model: BaseLLM, adapter_path: str):
     model.model = PeftModel.from_pretrained(model.model, adapter_path)
 
 
 def load_model(llm_config: LLMConfig) -> BaseLLM:
-    if "MOCKING" in environ and environ["MOCKING"]:
+    if environ["MOCKING"]:
         model = MockLLM()
         return model
     else:
