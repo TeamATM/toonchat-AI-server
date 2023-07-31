@@ -27,12 +27,12 @@ class LLMConfig:
 class BaseLLM:
     model = None
 
-    def generate(self, history: str, x: str, args: dict = None):
+    def generate(self, history, x, bot=None, **kwargs):
         raise NotImplementedError
 
 
 class MockLLM(BaseLLM):
-    def generate(self, history: str, x: str, args: dict = None):
+    def generate(self, history, x, bot=None, **kwargs):
         import time
 
         for s in ["This", " is", " a", " mock", " result"]:
