@@ -36,8 +36,8 @@ class MockLLM(BaseLLM):
         import time
 
         for s in ["This", " is", " a", " mock", " result"]:
-            yield s
             time.sleep(1)
+            yield s
 
 
 if not os.environ["MOCKING"]:
