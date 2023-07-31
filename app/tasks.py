@@ -61,21 +61,23 @@ def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
         )
 
 
-def get_data(messageId, status, content, chat_from):
+def get_data(messageId, status, content, chat_from, characterName):
     return {
         "messageId": messageId,
         "status": status,
         "content": content,
-        "from": chat_from,
+        "messageFrom": chat_from,
+        "characterName": characterName,
         "createdAt": int(time() * 1000),
     }
 
 
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: Task, data, stream=False):
-    print(data)
     request: Context = self.request
-    streamer = self.model.generate(history=data["history"], x=data["content"])
+    streamer = self.model.generate(
+        history=data["history"], x=data["content"], bot=data["characterName"]
+    )
 
     completion = []
 
@@ -84,16 +86,16 @@ def inference(self: Task, data, stream=False):
         if stream:
             publish(
                 self,
-                get_data(request.id, "PROCESSING", token, data["to"]),
+                get_data(request.id, "PROCESSING", token, data["messageTo"], data["characterName"]),
                 "amq.topic",
-                data["from"],
+                data["messageFrom"],
             )
 
     completion = "".join(completion)
     publish(
         self,
-        get_data(request.id, states.SUCCESS, completion, data["to"]),
+        get_data(request.id, states.SUCCESS, completion, data["messageTo"], data["characterName"]),
         "amq.topic",
-        data["from"],
+        data["messageFrom"],
     )
     return completion
