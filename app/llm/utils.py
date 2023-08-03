@@ -14,7 +14,8 @@ else:
     from app.llm.models import LoadedLLM
 
 
-from app.llm.models import LLMConfig, BaseLLM
+from app.llm.models import BaseLLM
+from app.llm.config import LLMConfig
 from app.llm.constants import ModelType
 
 

@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class ModelType(Enum):
-    PURE = 0
-    LoRA = 1
+class ModelType(str, Enum):
+    PURE = "pure"
+    LoRA = "lora"
