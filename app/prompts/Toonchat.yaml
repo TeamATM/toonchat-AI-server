@@ -1,5 +1,5 @@
-user: "Human:"
-bot: "<|bot|>:"
-sep: " "
-turn_template: "<|user|> <|user-message|><|sep|><|bot|> <|bot-message|><|endoftext|>"
-context: "아래 프롬프트는 답변할 질문, 완료할 과제 또는 응답할 대화입니다. 어떤 것인지 결정하고 적절한 응답을 작성하세요. "
+user: "### 입력:"
+bot: "### 응답:\nAssistant:"
+sep: "\n"
+turn_template: "<|user|><|sep|><|user-message|><|sep|><|sep|><|bot|> <|bot-message|></s>"
+context: '아래는 작업을 설명하는 명령어와 추가 컨텍스트를 제공하는 입력이 짝을 이루는 예제입니다. 요청을 적절히 완료하는 응답을 작성하세요.\n\n### 명령어:\n이전 맥락을 고려하면서 채팅을 이어나가세요.\n\n'
