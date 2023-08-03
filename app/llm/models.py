@@ -3,28 +3,6 @@ from typing import Callable
 from threading import Thread
 
 from app.models import SingletonMetaClass
-from app.llm.constants import ModelType
-
-
-class LLMConfig:
-    def __init__(
-        self,
-        model_type: ModelType,
-        base_model_path: str,
-        adapter_path: str | None = None,
-        prompt_fname: str = None,
-        load_in_4bit: bool = True,
-        stopping_words: list | None = None,
-    ) -> None:
-        assert base_model_path is not None
-        assert model_type != ModelType.LoRA or adapter_path
-
-        self.model_type = model_type
-        self.adapter_path = adapter_path
-        self.prompt_fname = prompt_fname
-        self.base_model_path = base_model_path
-        self.load_in_4bit = load_in_4bit
-        self.stopping_words = stopping_words
 
 
 class BaseLLM:
