@@ -18,10 +18,6 @@ from app.llm.models import LLMConfig, BaseLLM
 from app.llm.constants import ModelType
 
 
-def load_lora(model: BaseLLM, adapter_path: str):
-    model.model = PeftModel.from_pretrained(model.model, adapter_path)
-
-
 def load_model(llm_config: LLMConfig) -> BaseLLM:
     if environ["MOCKING"]:
         model = MockLLM()
@@ -53,13 +49,15 @@ def load_model(llm_config: LLMConfig) -> BaseLLM:
     except ValueError as e:
         raise e
 
-    loaded_model: LoadedLLM = LoadedLLM(
+    if llm_config.model_type == ModelType.LoRA:
+        model = PeftModel.from_pretrained(model, llm_config.adapter_path)
+
+    return LoadedLLM(
         model,
         tokenizer,
         prompt_config=load_prompt(llm_config.prompt_fname),
         stopping_words=llm_config.stopping_words,
     )
-    return loaded_model
 
 
 def load_prompt(fname):

@@ -4,8 +4,8 @@ from celery import Task, states
 from time import time
 
 from app.worker import app
-from app.llm.utils import load_model, load_lora
-from app.llm.models import BaseLLM, LLMConfig, MockLLM
+from app.llm.utils import load_model
+from app.llm.models import BaseLLM, LLMConfig
 from app.llm.constants import ModelType
 
 
@@ -18,6 +18,9 @@ class InferenceTask(Task):
         super().__init__()
         self.model: BaseLLM = None
         self.max_retries = 1
+        import os
+
+        print(os.environ["AAAA"])
 
     def __call__(self, *args, **kwargs):
         """
@@ -28,14 +31,11 @@ class InferenceTask(Task):
             print("Load Model")
             llm_config = LLMConfig(
                 ModelType.LoRA,
-                join("models", "checkpoint-2200"),
-                "Remon",
-                join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
-                stopping_words=["\n\n", "\nHuman:"],
+                jbase_model_path=join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
+                adapter_path=join("models", "checkpoint-2200"),
+                prompt_fname="Remon",
             )
             self.model = load_model(llm_config)
-            if not isinstance(self.model, MockLLM):
-                load_lora(self.model, llm_config.adapter_path)
 
         return super().__call__(*args, **kwargs)
 
