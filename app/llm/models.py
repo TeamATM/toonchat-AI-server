@@ -10,12 +10,15 @@ class LLMConfig:
     def __init__(
         self,
         model_type: ModelType,
-        adapter_path: str,
+        base_model_path: str,
+        adapter_path: str | None = None,
         prompt_fname: str = None,
-        base_model_path: str | None = None,
         load_in_4bit: bool = True,
         stopping_words: list | None = None,
     ) -> None:
+        assert base_model_path is not None
+        assert model_type != ModelType.LoRA or adapter_path
+
         self.model_type = model_type
         self.adapter_path = adapter_path
         self.prompt_fname = prompt_fname
