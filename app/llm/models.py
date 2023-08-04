@@ -8,12 +8,12 @@ from app.models import SingletonMetaClass
 class BaseLLM:
     model = None
 
-    def generate(self, history, x, bot=None, **kwargs):
+    def generate(self, x, bot=None, **kwargs):
         raise NotImplementedError
 
 
 class MockLLM(BaseLLM):
-    def generate(self, history, x, bot=None, **kwargs):
+    def generate(self, x, bot=None, **kwargs):
         import time
 
         for s in ["This", " is", " a", " mock", " result"]:
@@ -68,13 +68,13 @@ if not os.environ["MOCKING"]:
         def stop_generate(self):
             self.do_stop = True
 
-        def generate(self, history, x, bot=None, **kwargs):
+        def generate(self, x, bot=None, **kwargs):
             prompt = self.prompt_config["prompt"].replace("<|user-message|>", x)
             if bot:
                 prompt = prompt.replace("<|bot|>", bot)
             generate_kwargs = dict(
                 **self.tokenizer(
-                    f"{history}{self.prompt_config['sep']}{prompt}",
+                    f"{prompt}",
                     return_tensors="pt",
                     return_token_type_ids=False,
                 ).to(0),
