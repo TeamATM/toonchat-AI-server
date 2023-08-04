@@ -72,9 +72,12 @@ def get_data(messageId, status, content, chat_from, characterName):
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: Task, data, stream=False):
     request: Context = self.request
-    streamer = self.model.generate(
-        history=data["history"], x=data["content"], bot=data["characterName"]
-    )
+    """
+    TODO: History input_data 위에 덧붙이기
+    """
+    input_data = f"Human: {data['content']}"
+
+    streamer = self.model.generate(input_data)
 
     completion = []
 
