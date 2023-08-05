@@ -18,7 +18,7 @@ class LLMConfig(BaseSettings):
     @root_validator(pre=True)
     def a(cls, values: dict):
         if environ["MOCKING"]:
-            return
+            return values
 
         base_model_path = values.get("base_model_path")
         if not base_model_path or not Path(base_model_path).is_dir():
