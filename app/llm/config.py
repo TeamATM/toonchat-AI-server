@@ -1,3 +1,4 @@
+from os import environ
 from pathlib import Path
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,9 @@ class LLMConfig(BaseSettings):
 
     @root_validator(pre=True)
     def a(cls, values: dict):
+        if environ["MOCKING"]:
+            return
+
         base_model_path = values.get("base_model_path")
         if not base_model_path or not Path(base_model_path).is_dir():
             raise FileNotFoundError
