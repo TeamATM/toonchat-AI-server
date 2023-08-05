@@ -58,12 +58,13 @@ def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
         )
 
 
-def get_data(messageId, status, content, chat_from, characterName):
+def get_data(messageId, status, content, chat_from, chat_to, characterName):
     return {
         "messageId": messageId,
         "status": status,
         "content": content,
         "messageFrom": chat_from,
+        "messageTo": chat_to,
         "characterName": characterName,
         "createdAt": int(time() * 1000),
     }
@@ -86,7 +87,14 @@ def inference(self: Task, data, stream=False):
         if stream:
             publish(
                 self,
-                get_data(request.id, "PROCESSING", token, data["messageTo"], data["characterName"]),
+                get_data(
+                    request.id,
+                    "PROCESSING",
+                    token,
+                    data["messageTo"],
+                    data["messageFrom"],
+                    data["characterName"],
+                ),
                 "amq.topic",
                 data["messageFrom"],
             )
@@ -94,7 +102,14 @@ def inference(self: Task, data, stream=False):
     completion = "".join(completion)
     publish(
         self,
-        get_data(request.id, states.SUCCESS, completion, data["messageTo"], data["characterName"]),
+        get_data(
+            request.id,
+            states.SUCCESS,
+            completion,
+            data["messageTo"],
+            data["messageFrom"],
+            data["characterName"],
+        ),
         "amq.topic",
         data["messageFrom"],
     )
