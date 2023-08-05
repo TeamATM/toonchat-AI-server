@@ -6,7 +6,7 @@ from app.llm.constants import ModelType
 
 
 class LLMConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env.llm", env_file_encoding="utf-8", extra="allow")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
 
     model_type: ModelType
     base_model_path: str

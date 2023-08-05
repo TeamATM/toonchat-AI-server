@@ -1,3 +1,4 @@
+from functools import reduce
 from celery.app.task import Context
 from celery import Task, states
 from time import time
@@ -73,10 +74,20 @@ def get_data(messageId, status, content, chat_from, chat_to, characterName):
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: Task, data, stream=False):
     request: Context = self.request
+
+    if data["history"]:
+        history = reduce(
+            lambda history, message: f"{history}{'Human' if message['status']==states.STARTED else 'Assistant'}: {message['content']}\n",
+            data["history"],
+            "",
+        )
+    else:
+        history = ""
     """
     TODO: History input_data 위에 덧붙이기
     """
-    input_data = f"Human: {data['content']}"
+    input_data = f"{history}Human: {data['content']}"
+    print(input_data)
 
     streamer = self.model.generate(input_data)
 
