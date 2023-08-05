@@ -59,9 +59,6 @@ def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
         )
 
 
-{}.get()
-
-
 def get_data(messageId, status, content, data: dict):
     return {
         "messageId": messageId,
@@ -78,7 +75,7 @@ def get_data(messageId, status, content, data: dict):
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: Task, data, stream=False):
     request: Context = self.request
-
+    print(data)
     if data["history"]:
         history = reduce(
             lambda history, message: f"{history}{'Human' if message['status']==states.STARTED else 'Assistant'}: {message['content']}\n",
@@ -91,7 +88,6 @@ def inference(self: Task, data, stream=False):
     TODO: History input_data 위에 덧붙이기
     """
     input_data = f"{history}Human: {data['content']}"
-    print(input_data)
 
     streamer = self.model.generate(input_data)
 
