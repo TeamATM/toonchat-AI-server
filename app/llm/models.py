@@ -7,15 +7,17 @@ from app.models import SingletonMetaClass
 
 class BaseLLM:
     model = None
+    promt_template: str = "Toonchat_v2"
 
-    def generate(self, x, bot=None, **kwargs):
+    def generate(self, prompt: str, bot=None, **kwargs):
         raise NotImplementedError
 
 
 class MockLLM(BaseLLM):
-    def generate(self, x, bot=None, **kwargs):
+    def generate(self, prompt: str, bot=None, **kwargs):
         import time
 
+        # print(prompt)
         for s in ["This", " is", " a", " mock", " result"]:
             time.sleep(1)
             yield s
@@ -36,14 +38,14 @@ if not os.environ["MOCKING"]:
             self,
             model: PreTrainedModel,
             tokenizer: PreTrainedTokenizerBase,
-            prompt_config: str,
+            promt_template: str,
             stopping_words: list = None,
         ) -> None:
             from transformers import TextIteratorStreamer, StoppingCriteriaList
 
             self.model = model
             self.tokenizer = tokenizer
-            self.prompt_config = prompt_config
+            self.promt_template = promt_template
             self.isLoaded = True
             self.stopping_criteria = None
             self.streamer = TextIteratorStreamer(
@@ -68,17 +70,14 @@ if not os.environ["MOCKING"]:
         def stop_generate(self):
             self.do_stop = True
 
-        def generate(self, x, bot=None, **kwargs):
-            prompt = self.prompt_config["prompt"].replace("<|user-message|>", x)
-            if bot:
-                prompt = prompt.replace("<|bot|>", bot)
+        def generate(self, prompt: str, bot=None, **kwargs):
             generate_kwargs = dict(
                 **self.tokenizer(
-                    f"{prompt}",
+                    prompt,
                     return_tensors="pt",
                     return_token_type_ids=False,
-                ).to(0),
-                max_time=20,  # 최대 생성 시간 (s)
+                ),
+                max_time=15,  # 최대 생성 시간 (s)
                 streamer=self.streamer,
                 max_new_tokens=512,
                 do_sample=True,
