@@ -1,9 +1,5 @@
 from os import environ
 
-import yaml
-from pathlib import Path
-
-from app.utils import replace_all, print_red
 
 if environ["MOCKING"]:
     from app.llm.models import MockLLM
@@ -56,30 +52,30 @@ def load_model(llm_config: LLMConfig) -> BaseLLM:
     return LoadedLLM(
         model,
         tokenizer,
-        prompt_config=load_prompt(llm_config.prompt_fname),
+        promt_template=llm_config.prompt_template,
         stopping_words=llm_config.stopping_words,
     )
 
 
-def load_prompt(fname):
-    file_path = Path(f"app/prompts/{fname}.yaml")
-    if not file_path.exists():
-        print_red("Template is Empty!")
-        return ""
+# def load_prompt(fname):
+#     file_path = Path(f"app/prompts/{fname}.yaml")
+#     if not file_path.exists():
+#         print_red("Template is Empty!")
+#         return ""
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-        output = ""
-        if "context" in data:
-            output += data["context"]
+#     with open(file_path, "r", encoding="utf-8") as f:
+#         data = yaml.safe_load(f)
+#         output = ""
+#         if "context" in data:
+#             output += data["context"]
 
-        replacements = {
-            "<|user|>": data["user"],
-            "<|sep|>": data["sep"],
-            "<|bot|>": data["bot"],
-        }
+#         replacements = {
+#             "<|user|>": data["user"],
+#             "<|sep|>": data["sep"],
+#             "<|bot|>": data["bot"],
+#         }
 
-        output += replace_all(
-            data["turn_template"].split("<|bot-message|>")[0], replacements
-        ).strip()
-        return {"prompt": output, "sep": data["sep"]}
+#         output += replace_all(
+#             data["turn_template"].split("<|bot-message|>")[0], replacements
+#         ).strip()
+#         return {"prompt": output, "sep": data["sep"]}

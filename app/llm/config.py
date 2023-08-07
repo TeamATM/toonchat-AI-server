@@ -11,7 +11,7 @@ class LLMConfig(BaseSettings):
     model_type: ModelType
     base_model_path: str
     adapter_path: str | None = None
-    prompt_fname: str = None
+    prompt_template: str = "Toonchat_v1.1"
     load_in_4bit: bool = True
     stopping_words: list | None = None
 
@@ -34,4 +34,3 @@ class LLMConfig(BaseSettings):
 
 
 llm_config = LLMConfig()
-print(llm_config)
