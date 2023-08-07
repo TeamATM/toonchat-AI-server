@@ -1,4 +1,3 @@
-from functools import reduce
 from celery.app.task import Context
 from celery import Task, states
 from time import time
@@ -7,6 +6,7 @@ from app.worker import app
 from app.llm.utils import load_model
 from app.llm.models import BaseLLM
 from app.llm.config import llm_config
+from app.llm.conversations import get_conv_template
 
 
 class InferenceTask(Task):
@@ -14,9 +14,10 @@ class InferenceTask(Task):
     Abstraction of Celery's Task class to support loading ML model.
     """
 
+    model: BaseLLM = None
+
     def __init__(self) -> None:
         super().__init__()
-        self.model: BaseLLM = None
         self.max_retries = 1
 
     def __call__(self, *args, **kwargs):
@@ -26,13 +27,6 @@ class InferenceTask(Task):
         """
         if not self.model:
             print("Load Model")
-            # llm_config = LLMConfig(
-            #     ModelType.LoRA,
-            #     jbase_model_path=join("models", "beomi", "KoAlpaca-Polyglot-5.8B"),
-            #     adapter_path=join("models", "checkpoint-2200"),
-            #     prompt_fname="Remon",
-            # )
-
             self.model = load_model(llm_config)
 
         return super().__call__(*args, **kwargs)
@@ -73,23 +67,21 @@ def get_data(messageId, status, content, data: dict):
 
 
 @app.task(bind=True, base=InferenceTask, name="inference")
-def inference(self: Task, data, stream=False):
+def inference(self: InferenceTask, data, stream=False):
     request: Context = self.request
-    print(data)
-    if data["history"]:
-        history = reduce(
-            lambda history, message: f"{history}{'Human' if message['status']==states.STARTED else 'Assistant'}: {message['content']}\n",
-            data["history"],
-            "",
-        )
-    else:
-        history = ""
-    """
-    TODO: History input_data 위에 덧붙이기
-    """
-    input_data = f"{history}Human: {data['content']}"
 
-    streamer = self.model.generate(input_data)
+    conv = get_conv_template(self.model.promt_template)
+    if data["history"]:
+        for message in data["history"]:
+            conv.append_message(
+                conv.roles[0] if message["status"] == states.STARTED else conv.roles[1],
+                message["content"],
+            )
+
+    conv.append_message(conv.roles[0], data["content"])
+    conv.append_message(conv.roles[1], None)
+
+    streamer = self.model.generate(conv.get_prompt())
 
     completion = []
 
@@ -103,7 +95,7 @@ def inference(self: Task, data, stream=False):
                 data["messageFrom"],
             )
 
-    completion = "".join(completion)
+    completion = ("".join(completion)).strip()
     publish(
         self,
         get_data(request.id, states.SUCCESS, completion, data),
