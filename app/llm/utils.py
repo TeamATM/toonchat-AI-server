@@ -41,7 +41,9 @@ def load_model(llm_config: LLMConfig) -> BaseLLM:
         model = AutoModelForCausalLM.from_pretrained(
             base_model_id, quantization_config=bnb_config, device_map={"": 0}
         )
-        tokenizer = AutoTokenizer.from_pretrained(base_model_id)
+        tokenizer = AutoTokenizer.from_pretrained(
+            base_model_id, use_fast=True, model_max_length=4096
+        )
 
     except ValueError as e:
         raise e
