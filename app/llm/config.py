@@ -11,9 +11,9 @@ class LLMConfig(BaseSettings):
     model_type: ModelType
     base_model_path: str
     adapter_path: str | None = None
-    prompt_template: str = "Toonchat_v1.1"
+    prompt_template: str = "Toonchat_v2"
     load_in_4bit: bool = True
-    stopping_words: list | None = None
+    stopping_words: list | str = None
 
     @root_validator(pre=True)
     def a(cls, values: dict):
@@ -29,6 +29,10 @@ class LLMConfig(BaseSettings):
             adapter_path
         ).is_dir():
             raise FileNotFoundError
+
+        sw = values.get("stopping_words")
+        if sw and type(sw) == str:
+            values["stopping_words"] = sw.split(", ")
 
         return values
 
