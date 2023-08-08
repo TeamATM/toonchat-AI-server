@@ -76,7 +76,7 @@ if not os.environ["MOCKING"]:
                     prompt,
                     return_tensors="pt",
                     return_token_type_ids=False,
-                ),
+                ).to(0),
                 max_time=15,  # 최대 생성 시간 (s)
                 streamer=self.streamer,
                 max_new_tokens=512,
