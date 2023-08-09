@@ -6,16 +6,20 @@ if environ["MOCKING"]:
 else:
     from torch import bfloat16
     from peft import PeftModel, PeftConfig
-    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+    from transformers import (
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        BitsAndBytesConfig,
+    )
     from app.llm.models import LoadedLLM
 
 
 from app.llm.models import BaseLLM
-from app.llm.config import LLMConfig
+from app.llm.config import llm_config
 from app.llm.constants import ModelType
 
 
-def load_model(llm_config: LLMConfig) -> BaseLLM:
+def load_model() -> BaseLLM:
     if environ["MOCKING"]:
         model = MockLLM()
         return model
@@ -49,7 +53,9 @@ def load_model(llm_config: LLMConfig) -> BaseLLM:
         raise e
 
     if llm_config.model_type == ModelType.LoRA:
-        model = PeftModel.from_pretrained(model, llm_config.adapter_path)
+        model = PeftModel.from_pretrained(
+            model, llm_config.get_adapter_path(), adapter_name=llm_config.adapter_name
+        )
 
     return LoadedLLM(
         model,
@@ -59,25 +65,19 @@ def load_model(llm_config: LLMConfig) -> BaseLLM:
     )
 
 
-# def load_prompt(fname):
-#     file_path = Path(f"app/prompts/{fname}.yaml")
-#     if not file_path.exists():
-#         print_red("Template is Empty!")
-#         return ""
+def set_adapter(model: PeftModel, adapter_name: str):
+    if type(model) is not PeftModel:
+        print("model is not a peft model")
+        return
 
-#     with open(file_path, "r", encoding="utf-8") as f:
-#         data = yaml.safe_load(f)
-#         output = ""
-#         if "context" in data:
-#             output += data["context"]
+    if model.active_adapter == adapter_name:
+        return
 
-#         replacements = {
-#             "<|user|>": data["user"],
-#             "<|sep|>": data["sep"],
-#             "<|bot|>": data["bot"],
-#         }
+    if adapter_name not in model.peft_config:
+        try:
+            model.load_adapter(llm_config.get_adapter_path(adapter_name), adapter_name=adapter_name)
+        except Exception as e:
+            print(f"Can not load adpater name {adapter_name}\n{e}")
+            return
 
-#         output += replace_all(
-#             data["turn_template"].split("<|bot-message|>")[0], replacements
-#         ).strip()
-#         return {"prompt": output, "sep": data["sep"]}
+    model.set_adapter(adapter_name)
