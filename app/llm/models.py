@@ -87,8 +87,8 @@ if not os.environ["MOCKING"]:
                 temperature=0.1,
                 # top_p=top_p,
                 # top_k=top_k,
-                **kwargs,
             )
+            generate_kwargs.update(kwargs)
             self.isRunning = True
             self.do_stop = False
             thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
