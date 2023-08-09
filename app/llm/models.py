@@ -95,7 +95,7 @@ if not os.environ["MOCKING"]:
             self.isRunning = True
             self.do_stop = False
 
-            if bot and type(self.model) is PeftModel:
+            if bot and isinstance(self.model, PeftModel):
                 set_adapter(self.model, bot)
 
             thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
