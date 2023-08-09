@@ -65,7 +65,7 @@ def load_model() -> BaseLLM:
     )
 
 
-def set_adapter(model: PeftModel, adapter_name: str):
+def set_adapter(model, adapter_name: str):
     if type(model) is not PeftModel:
         print("model is not a peft model")
         return

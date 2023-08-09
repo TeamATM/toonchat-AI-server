@@ -3,7 +3,6 @@ from typing import Callable
 from threading import Thread
 
 from app.models import SingletonMetaClass
-from app.llm.utils import set_adapter
 
 
 class BaseLLM:
@@ -73,6 +72,7 @@ if not os.environ["MOCKING"]:
 
         def generate(self, prompt: str, bot=None, **kwargs):
             from peft.peft_model import PeftModel
+            from app.llm.utils import set_adapter
 
             generate_kwargs = dict(
                 **self.tokenizer(
