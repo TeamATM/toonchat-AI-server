@@ -5,7 +5,6 @@ from time import time
 from app.worker import app
 from app.llm.utils import load_model
 from app.llm.models import BaseLLM
-from app.llm.config import llm_config
 from app.llm.conversations import get_conv_template
 
 
@@ -27,7 +26,7 @@ class InferenceTask(Task):
         """
         if not self.model:
             print("Load Model")
-            self.model = load_model(llm_config)
+            self.model = load_model()
 
         return super().__call__(*args, **kwargs)
 
@@ -67,7 +66,7 @@ def get_data(messageId, status, content, data: dict):
 
 
 @app.task(bind=True, base=InferenceTask, name="inference")
-def inference(self: InferenceTask, data, stream=False):
+def inference(self: InferenceTask, data: dict, stream=False):
     request: Context = self.request
 
     conv = get_conv_template(self.model.promt_template)
@@ -81,7 +80,9 @@ def inference(self: InferenceTask, data, stream=False):
     conv.append_message(conv.roles[0], data["content"])
     conv.append_message(conv.roles[1], None)
 
-    streamer = self.model.generate(conv.get_prompt())
+    streamer = self.model.generate(
+        conv.get_prompt(), bot=data.get("characterName", None), **data.get("parameters", {})
+    )
 
     completion = []
 
