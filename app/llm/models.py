@@ -3,6 +3,7 @@ from typing import Callable
 from threading import Thread
 
 from app.models import SingletonMetaClass
+from app.llm.utils import set_adapter
 
 
 class BaseLLM:
@@ -71,6 +72,8 @@ if not os.environ["MOCKING"]:
             self.do_stop = True
 
         def generate(self, prompt: str, bot=None, **kwargs):
+            from peft.peft_model import PeftModel
+
             generate_kwargs = dict(
                 **self.tokenizer(
                     prompt,
@@ -85,12 +88,16 @@ if not os.environ["MOCKING"]:
                 eos_token_id=2,
                 stopping_criteria=self.stopping_criteria,
                 temperature=0.1,
-                # top_p=top_p,
-                # top_k=top_k,
             )
-            generate_kwargs.update(kwargs)
+            if kwargs:
+                generate_kwargs.update(kwargs)
+
             self.isRunning = True
             self.do_stop = False
+
+            if bot and type(self.model) is PeftModel:
+                set_adapter(self.model, bot)
+
             thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
 
             thread.start()
