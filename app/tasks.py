@@ -81,7 +81,7 @@ def inference(self: InferenceTask, data: dict, stream=False):
     conv.append_message(conv.roles[1], None)
 
     streamer = self.model.generate(
-        conv.get_prompt(), bot=data.get("characterName", None), **data.get("parameters", {})
+        conv.get_prompt(), bot=data.get("characterName", None), **data.get("generationArgs", {})
     )
 
     completion = []
