@@ -33,7 +33,7 @@ class LLMConfig(BaseSettings):
             raise FileNotFoundError("Can not find lora file")
 
         sw = values.get("stopping_words")
-        if sw and type(sw) == str:
+        if sw and isinstance(sw, str):
             values["stopping_words"] = sw.split(", ")
 
         return values
