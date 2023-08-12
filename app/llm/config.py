@@ -1,9 +1,10 @@
-from os import environ
 from os import path
 from pathlib import Path
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from app.llm.constants import ModelType
+from app.utils import is_production
 
 
 class LLMConfig(BaseSettings):
@@ -19,7 +20,7 @@ class LLMConfig(BaseSettings):
 
     @root_validator(pre=True)
     def a(cls, values: dict):
-        if environ["MOCKING"]:
+        if not is_production():
             return values
 
         base_model_path = values.get("base_model_path")
