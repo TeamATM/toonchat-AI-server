@@ -18,4 +18,4 @@ def get_profile():
 
 
 def is_production():
-    return get_profile == "production"
+    return get_profile() == "production"
