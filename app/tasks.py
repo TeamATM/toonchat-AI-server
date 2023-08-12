@@ -18,6 +18,9 @@ class InferenceTask(Task):
     def __init__(self) -> None:
         super().__init__()
         self.max_retries = 1
+        if not self.model:
+            print("Load Model")
+            self.model = load_model()
 
     def __call__(self, *args, **kwargs):
         """
