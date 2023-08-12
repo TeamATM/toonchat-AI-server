@@ -18,9 +18,9 @@ class InferenceTask(Task):
     def __init__(self) -> None:
         super().__init__()
         self.max_retries = 1
-        if not self.model:
-            print("Load Model")
-            self.model = load_model()
+        # if not self.model:
+        #     print("Load Model")
+        #     self.model = load_model()
 
     def __call__(self, *args, **kwargs):
         """
@@ -80,6 +80,14 @@ def inference(self: InferenceTask, data: dict, stream=False):
                 message["content"],
             )
 
+    conv.append_message(
+        conv.roles[2],
+        "내 이름은 이영준이다. 1986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 매력적인 외모를 가지고 있다. 나는 카리스마가 있다. 나는 자기애가 강하다."
+        if data.get("characterName") == "이영준"
+        else "내 이름은 김미소이다. 나는 1990년 4월 5월생인 29살 여자이다. 나는 이영준 부회장의 개인 비서이다. 나는 뛰어난 지능을 가지고 있다. 나는 높은 의사소통 능력을 가지고 있다. 나는 일찍부터 사회생활에 뛰어들었다. 나는 퇴사를 고려중이다."
+        if data.get("characterName") == "김미소"
+        else "",
+    )
     conv.append_message(conv.roles[0], data["content"])
     conv.append_message(conv.roles[1], None)
 
