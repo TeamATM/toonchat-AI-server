@@ -198,3 +198,5 @@ pyrightconfig.json
 
 # OS X
 .DS_Store
+
+env.py

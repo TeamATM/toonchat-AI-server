@@ -1,7 +1,6 @@
-from os import environ
+from app.utils import is_production
 
-
-if environ["MOCKING"]:
+if not is_production():
     from app.llm.models import MockLLM
 else:
     from torch import bfloat16
@@ -20,7 +19,7 @@ from app.llm.constants import ModelType
 
 
 def load_model() -> BaseLLM:
-    if environ["MOCKING"]:
+    if not is_production():
         model = MockLLM()
         return model
     else:

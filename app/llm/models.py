@@ -1,8 +1,8 @@
-import os
 from typing import Callable
 from threading import Thread
 
 from app.models import SingletonMetaClass
+from app.utils import is_production
 
 
 class BaseLLM:
@@ -23,7 +23,7 @@ class MockLLM(BaseLLM):
             yield s
 
 
-if not os.environ["MOCKING"]:
+if is_production():
     import torch
     from transformers import StoppingCriteria
 
