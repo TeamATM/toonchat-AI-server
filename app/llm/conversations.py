@@ -183,3 +183,19 @@ register_conv_template(
         sep2="\n\n",
     )
 )
+
+register_conv_template(
+    Conversation(
+        name="Toonchat_v2.1",
+        system_message="""아래는 사용자와의 이전 대화 내용들과 캐릭터에 대한 정보 또는 대화에 필요한 추가 컨텍스트를 제공하는 입력이 짝을 이루는 예제입니다. 요청을 적절히 완료하는 응답을 작성하세요.
+
+### 명령어:
+""",
+        roles=("User", "Assistant", "System"),
+        messages=[],
+        offset=0,
+        sep_style=SeparatorStyle.GUANACO,
+        sep="\n",
+        sep2="\n\n",
+    )
+)
