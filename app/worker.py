@@ -3,8 +3,7 @@ from os.path import dirname
 
 chdir(dirname(dirname(__file__)))
 
-from app.utils import get_profile
-from env import get_celery_conf
+from app.config import celeryConfig
 from celery import Celery
 
 
@@ -24,6 +23,6 @@ app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     result_expires=86400,  # 하루
-    **get_celery_conf(get_profile()),
+    **celeryConfig.to_dict(),
 )
 # app.conf.result_backend = 'backend.CustomRPCBackend'
