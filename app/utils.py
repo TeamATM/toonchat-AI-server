@@ -1,4 +1,5 @@
 from os import environ
+from app.constant import Profile
 
 
 # Replace multiple string pairs in a string
@@ -14,8 +15,11 @@ def print_red(text):
 
 
 def get_profile():
-    return environ.get("PROFILE", "local")
+    try:
+        return Profile(environ.get("PROFILE", "local"))
+    except ValueError as e:
+        raise ValueError(f"profile: {environ.get('PROFILE')} is not a valid profile value") from e
 
 
 def is_production():
-    return get_profile() == "production"
+    return get_profile() == Profile.PRODUCTION
