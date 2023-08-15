@@ -1,4 +1,5 @@
 from app.utils import is_production
+from pathlib import Path
 
 if not is_production():
     from app.llm.models import MockLLM
@@ -73,10 +74,14 @@ def set_adapter(model, adapter_name: str):
         return
 
     if adapter_name not in model.peft_config:
-        try:
-            model.load_adapter(llm_config.get_adapter_path(adapter_name), adapter_name=adapter_name)
-        except Exception as e:
-            print(f"Can not load adpater name {adapter_name}\n{e}")
-            return
+        adapter_path = Path(llm_config.get_adapter_path(adapter_name))
+        if adapter_path.is_dir():
+            try:
+                model.load_adapter(
+                    llm_config.get_adapter_path(adapter_name), adapter_name=adapter_name
+                )
+            except Exception as e:
+                print(f"Can not load adpater name {adapter_name}\n{e}")
+                return
 
     model.set_adapter(adapter_name)
