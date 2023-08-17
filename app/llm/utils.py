@@ -80,8 +80,7 @@ def set_adapter(model, adapter_name: str):
                 model.load_adapter(
                     llm_config.get_adapter_path(adapter_name), adapter_name=adapter_name
                 )
+                model.set_adapter(adapter_name)
             except Exception as e:
                 print(f"Can not load adpater name {adapter_name}\n{e}")
                 return
-
-    model.set_adapter(adapter_name)
