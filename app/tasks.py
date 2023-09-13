@@ -1,5 +1,5 @@
 from celery.app.task import Context
-from celery import Task, states
+from celery import Task
 from time import time
 
 from app.worker import app
@@ -55,16 +55,19 @@ def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
         )
 
 
-def get_data(messageId, status, content, data: dict):
+def build_message(messageId, content, user_id, character_id):
     return {
         "messageId": messageId,
-        "status": status,
-        "content": content,
-        "messageFrom": data.get("messageTo"),
-        "messageTo": data.get("messageFrom"),
-        "characterName": data.get("characterName"),
-        "userId": data.get("userId", "userId is not in data!"),
+        "userId": user_id,
+        "characterId": character_id,
         "createdAt": int(time() * 1000),
+        "content": content,
+        "fromUser": False,
+        # TODO: 아래 쓸모없는 정보들 제거
+        "status": "SUCCESS",
+        "messageFrom": character_id,
+        "messageTo": "AAAAAAAAAAAA",
+        "characterName": "이영준",
     }
 
 
@@ -72,22 +75,29 @@ def get_data(messageId, status, content, data: dict):
 def inference(self: InferenceTask, data: dict, stream=False):
     request: Context = self.request
 
-    conv = get_conv_template(self.model.promt_template)
-    if data["history"]:
-        for message in data["history"]:
-            conv.append_message(
-                conv.roles[0] if message["status"] == states.STARTED else conv.roles[1],
-                message["content"],
-            )
+    exchange_name = "amq.topic"
+    user_id = data.get("userId", "Anonymous")
+    character_id = data.get("characterId", 0)
+    persona = data.get("persona", "")
 
-    conv.append_message(
-        conv.roles[2],
-        "내 이름은 이영준이다. 1986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 매력적인 외모를 가지고 있다. 나는 카리스마가 있다. 나는 자기애가 강하다."
-        if data.get("characterName") == "이영준"
-        else "내 이름은 김미소이다. 나는 1990년 4월 5월생인 29살 여자이다. 나는 이영준 부회장의 개인 비서이다. 나는 뛰어난 지능을 가지고 있다. 나는 높은 의사소통 능력을 가지고 있다. 나는 일찍부터 사회생활에 뛰어들었다. 나는 퇴사를 고려중이다."
-        if data.get("characterName") == "김미소"
-        else "",
-    )
+    if not persona:
+        persona = (
+            "내 이름은 이영준이다. 1986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 매력적인 외모를 가지고 있다. 나는 카리스마가 있다. 나는 자기애가 강하다."
+            if character_id == 0
+            else "내 이름은 김미소이다. 나는 1990년 4월 5월생인 29살 여자이다. 나는 이영준 부회장의 개인 비서이다. 나는 뛰어난 지능을 가지고 있다. 나는 높은 의사소통 능력을 가지고 있다. 나는 일찍부터 사회생활에 뛰어들었다. 나는 퇴사를 고려중이다."
+            if character_id == 1
+            else persona
+        )
+    elif isinstance(persona, list):
+        persona = " ".join(persona)
+
+    conv = get_conv_template(self.model.promt_template)
+    for i, message in enumerate(data.get("history", [])):
+        conv.append_message(
+            conv.roles[0 if message.get("fromUser", i % 2 == 0) else 1], message["content"]
+        )
+
+    conv.append_message(conv.roles[2], persona)
     conv.append_message(conv.roles[0], data["content"])
     conv.append_message(conv.roles[1], None)
 
@@ -100,18 +110,8 @@ def inference(self: InferenceTask, data: dict, stream=False):
     for token in streamer:
         completion.append(token)
         if stream:
-            publish(
-                self,
-                get_data(request.id, "PROCESSING", token, data),
-                "amq.topic",
-                data["messageFrom"],
-            )
+            publish(self, build_message(request.id, token, data), exchange_name, user_id)
 
     completion = ("".join(completion)).strip()
-    publish(
-        self,
-        get_data(request.id, states.SUCCESS, completion, data),
-        "amq.topic",
-        data["messageFrom"],
-    )
+    publish(self, build_message(request.id, completion, data), exchange_name, user_id)
     return completion
