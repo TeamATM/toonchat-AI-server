@@ -28,8 +28,9 @@ class InferenceTask(Task):
         Avoids the need to load model on each task request
         """
         if not self.model:
-            print("Load Model")
+            print("Start Model loading...")
             self.model = load_model()
+            print("Finished to load model")
 
         return super().__call__(*args, **kwargs)
 
@@ -110,8 +111,15 @@ def inference(self: InferenceTask, data: dict, stream=False):
     for token in streamer:
         completion.append(token)
         if stream:
-            publish(self, build_message(request.id, token, data), exchange_name, user_id)
+            publish(
+                self,
+                build_message(request.id, token, user_id, character_id),
+                exchange_name,
+                user_id,
+            )
 
     completion = ("".join(completion)).strip()
-    publish(self, build_message(request.id, completion, data), exchange_name, user_id)
+    publish(
+        self, build_message(request.id, completion, user_id, character_id), exchange_name, user_id
+    )
     return completion
