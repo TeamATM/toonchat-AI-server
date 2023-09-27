@@ -75,7 +75,7 @@ def inference(self: InferenceTask, data: dict, stream=False):
     message: PromptData
 
     try:
-        message = TypeAdapter(PromptData).validate_python(request)
+        message = TypeAdapter(PromptData).validate_python(data)
     except Exception as e:
         print(e)
         return
