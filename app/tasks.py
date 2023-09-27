@@ -1,11 +1,12 @@
 from celery.app.task import Context
+from datetime import datetime
 from celery import Task
-from time import time
 
 from app.worker import app
 from app.llm.utils import load_model
 from app.llm.models import BaseLLM
 from app.llm.conversations import get_conv_template
+from app.data import MessageFromMQ, MessageToMq
 
 
 class InferenceTask(Task):
@@ -35,11 +36,11 @@ class InferenceTask(Task):
         return super().__call__(*args, **kwargs)
 
 
-def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
+def publish(task: Task, data: MessageToMq, exchange: str, routing_key: str, **kwargs):
     request: Context = task.request
     with task.app.amqp.producer_pool.acquire(block=True) as producer:
         producer.publish(
-            data,
+            data.to_dict(),
             exchange=exchange,
             routing_key=routing_key,
             correlation_id=request.id,
@@ -57,54 +58,36 @@ def publish(task: Task, data: dict, exchange: str, routing_key: str, **kwargs):
 
 
 def build_message(messageId, content, user_id, character_id):
-    return {
-        "messageId": messageId,
-        "userId": user_id,
-        "characterId": character_id,
-        "createdAt": int(time() * 1000),
-        "content": content,
-        "fromUser": False,
-        # TODO: 아래 쓸모없는 정보들 제거
-        "status": "SUCCESS",
-        "messageFrom": character_id,
-        "messageTo": "AAAAAAAAAAAA",
-        "characterName": "이영준",
-    }
+    message = MessageToMq(
+        messageId=messageId,
+        userId=user_id,
+        characterId=character_id,
+        createdAt=datetime.now(),
+        content=content,
+    )
+    return message
 
 
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: InferenceTask, data: dict, stream=False):
     request: Context = self.request
+    message = MessageFromMQ(**data)
 
     exchange_name = "amq.topic"
-    user_id = data.get("userId", "Anonymous")
-    character_id = data.get("characterId", 0)
-    persona = data.get("persona", "")
-
-    if not persona:
-        persona = (
-            "내 이름은 이영준이다. 1986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 매력적인 외모를 가지고 있다. 나는 카리스마가 있다. 나는 자기애가 강하다."
-            if character_id == 0
-            else "내 이름은 김미소이다. 나는 1990년 4월 5월생인 29살 여자이다. 나는 이영준 부회장의 개인 비서이다. 나는 뛰어난 지능을 가지고 있다. 나는 높은 의사소통 능력을 가지고 있다. 나는 일찍부터 사회생활에 뛰어들었다. 나는 퇴사를 고려중이다."
-            if character_id == 1
-            else persona
-        )
-    elif isinstance(persona, list):
-        persona = " ".join(persona)
+    user_id = message.get_user_id()
+    character_id = message.get_character_id()
+    persona = message.get_persona()
 
     conv = get_conv_template(self.model.promt_template)
-    for i, message in enumerate(data.get("history", [])):
-        conv.append_message(
-            conv.roles[0 if message.get("fromUser", i % 2 == 0) else 1], message["content"]
-        )
+
+    for m in message.get_history()[:-1]:
+        conv.append_message(conv.roles[0 if m.is_user() else 1], m.content)
 
     conv.append_message(conv.roles[2], persona)
-    conv.append_message(conv.roles[0], data["content"])
+    conv.append_message(conv.roles[0], message.get_history()[-1].content)
     conv.append_message(conv.roles[1], None)
 
-    streamer = self.model.generate(
-        conv.get_prompt(), bot=data.get("characterName", None), **data.get("generationArgs", {})
-    )
+    streamer = self.model.generate(conv.get_prompt(), **message.get_generation_args())
 
     completion = []
 
