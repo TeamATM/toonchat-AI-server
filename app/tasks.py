@@ -1,6 +1,7 @@
 from celery.app.task import Context
 from datetime import datetime
 from celery import Task
+from pydantic import TypeAdapter
 
 from app.worker import app
 from app.llm.utils import load_model
@@ -71,7 +72,13 @@ def build_message(messageId, content, user_id, character_id):
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: InferenceTask, data: dict, stream=False):
     request: Context = self.request
-    message = PromptData(**data)
+    message: PromptData
+
+    try:
+        message = TypeAdapter(PromptData).validate_python(request)
+    except Exception as e:
+        print(e)
+        return
 
     exchange_name = "amq.topic"
     user_id = message.get_user_id()
