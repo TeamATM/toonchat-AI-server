@@ -6,7 +6,7 @@ from app.worker import app
 from app.llm.utils import load_model
 from app.llm.models import BaseLLM
 from app.llm.conversations import get_conv_template
-from app.data import MessageFromMQ, MessageToMq
+from app.data import PromptData, MessageToMq
 
 
 class InferenceTask(Task):
@@ -71,20 +71,19 @@ def build_message(messageId, content, user_id, character_id):
 @app.task(bind=True, base=InferenceTask, name="inference")
 def inference(self: InferenceTask, data: dict, stream=False):
     request: Context = self.request
-    message = MessageFromMQ(**data)
+    message = PromptData(**data)
 
     exchange_name = "amq.topic"
     user_id = message.get_user_id()
-    character_id = message.get_character_id()
     persona = message.get_persona()
 
     conv = get_conv_template(self.model.promt_template)
 
-    for m in message.get_history()[:-1]:
+    for m in message.get_chat_history_list()[:-1]:
         conv.append_message(conv.roles[0 if m.is_user() else 1], m.content)
 
     conv.append_message(conv.roles[2], persona)
-    conv.append_message(conv.roles[0], message.get_history()[-1].content)
+    conv.append_message(conv.roles[0], message.get_chat_history_list()[-1].content)
     conv.append_message(conv.roles[1], None)
 
     streamer = self.model.generate(conv.get_prompt(), **message.get_generation_args())
@@ -96,13 +95,11 @@ def inference(self: InferenceTask, data: dict, stream=False):
         if stream:
             publish(
                 self,
-                build_message(request.id, token, user_id, character_id),
+                message.build_return_message(request.id, token),
                 exchange_name,
                 user_id,
             )
 
     completion = ("".join(completion)).strip()
-    publish(
-        self, build_message(request.id, completion, user_id, character_id), exchange_name, user_id
-    )
+    publish(self, message.build_return_message(request.id, completion), exchange_name, user_id)
     return completion
