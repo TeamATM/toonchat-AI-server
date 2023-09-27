@@ -35,22 +35,14 @@ class PromptData:
     history: History
     generationArgs: GenerationArgs
 
-
-@dataclass
-class MessageFromMQ:
-    id: str
-    task: str
-    args: list[PromptData, bool]
-    kwargs: dict
-
     def get_user_id(self) -> str:
-        return self.args[0].history.userId
+        return self.history.userId
 
     def get_character_id(self) -> int:
-        return self.args[0].history.characterId
+        return self.history.characterId
 
     def get_persona(self) -> str:
-        persona = self.args[0].persona
+        persona = self.persona
         if not persona:
             character_id = self.get_character_id()
             persona = (
@@ -66,13 +58,22 @@ class MessageFromMQ:
         return persona
 
     def get_reference(self) -> list[str]:
-        return self.args[0].reference
+        return self.reference
 
-    def get_history(self) -> list[Message]:
-        return self.args[0].history.messages
+    def get_chat_history_list(self) -> list[Message]:
+        return self.history.messages
 
     def get_generation_args(self):
-        return asdict(self.args[0].generationArgs)
+        return asdict(self.generationArgs)
+
+    def build_return_message(self, message_id: str, content: str):
+        return MessageToMq(
+            messageId=message_id,
+            userId=self.history.userId,
+            characterId=self.history.characterId,
+            createdAt=datetime.now(),
+            content=content,
+        )
 
 
 @dataclass
