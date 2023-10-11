@@ -63,8 +63,9 @@ def build_message(messageId, content, user_id, character_id):
         messageId=messageId,
         userId=user_id,
         characterId=character_id,
-        createdAt=datetime.now(),
+        createdAt=datetime.now().isoformat(),
         content=content,
+        fromUser=False,
     )
     return message
 

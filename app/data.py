@@ -1,11 +1,12 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
 class Message:
     messageId: str
-    replyMessageId: str
+    replyMessageId: Optional[str]
     createdAt: datetime
     content: str
     fromUser: bool
@@ -71,8 +72,9 @@ class PromptData:
             messageId=message_id,
             userId=self.history.userId,
             characterId=self.history.characterId,
-            createdAt=datetime.now(),
+            createdAt=datetime.now().isoformat(),
             content=content,
+            fromUser=False,
         )
 
 
@@ -83,7 +85,7 @@ class MessageToMq:
     characterId: int
     createdAt: datetime
     content: str
-    fromUser = False
+    fromUser: bool = False
 
     def to_dict(self):
         return asdict(self)
