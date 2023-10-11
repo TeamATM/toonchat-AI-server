@@ -200,3 +200,5 @@ pyrightconfig.json
 .DS_Store
 
 env.py
+data/**
+test/**
