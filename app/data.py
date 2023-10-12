@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -72,7 +72,7 @@ class PromptData:
             messageId=message_id,
             userId=self.history.userId,
             characterId=self.history.characterId,
-            createdAt=datetime.now().isoformat(),
+            createdAt=datetime.now(timezone.utc).isoformat(),
             content=content,
             fromUser=False,
         )
