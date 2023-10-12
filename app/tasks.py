@@ -1,5 +1,5 @@
 from celery.app.task import Context
-from datetime import datetime
+from datetime import datetime, timezone
 from celery import Task
 from pydantic import TypeAdapter
 
@@ -63,7 +63,7 @@ def build_message(messageId, content, user_id, character_id):
         messageId=messageId,
         userId=user_id,
         characterId=character_id,
-        createdAt=datetime.now().isoformat(),
+        createdAt=datetime.now(timezone.utc).isoformat(),
         content=content,
         fromUser=False,
     )
