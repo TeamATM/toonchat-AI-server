@@ -6,6 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.llm.constants import ModelType
 from app.utils import is_production
 
+if is_production():
+    from transformers import BitsAndBytesConfig
+    from torch import bfloat16
+
 
 class LLMConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file="env/.env", env_file_encoding="utf-8", extra="allow")
@@ -44,3 +48,14 @@ class LLMConfig(BaseSettings):
 
 
 llm_config = LLMConfig()
+
+bnb_config = (
+    BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=bfloat16,
+    )
+    if llm_config.load_in_4bit
+    else None
+)
