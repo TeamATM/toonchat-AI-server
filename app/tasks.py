@@ -1,113 +1,61 @@
-from celery.app.task import Context
-from datetime import datetime, timezone
-from celery import Task
+import json
+import logging
 from pydantic import TypeAdapter
 
-from app.worker import app
+from app.message_queue.amqp import Amqp
 from app.llm.utils import load_model
 from app.llm.models import BaseLLM
 from app.llm.conversations import get_conv_template
-from app.data import PromptData, MessageToMq
+from app.data import PromptData
+
+logger = logging.getLogger(__name__)
 
 
-class InferenceTask(Task):
-    """
-    Abstraction of Celery's Task class to support loading ML model.
-    """
-
+class InferenceTask:
     model: BaseLLM = None
+    amqp: Amqp
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.max_retries = 1
-        # if not self.model:
-        #     print("Load Model")
-        #     self.model = load_model()
+    def __init__(self, amqp) -> None:
+        self.model = load_model()
+        self.amqp = amqp
+        amqp.attach(self)
 
-    def __call__(self, *args, **kwargs):
-        """
-        Load model on first call (i.e. first task processed)
-        Avoids the need to load model on each task request
-        """
-        if not self.model:
-            print("Start Model loading...")
-            self.model = load_model()
-            print("Finished to load model")
+    def update(self, data):
+        if isinstance(data, dict) and "id" in data:
+            args = data.get("args", None)
+            if isinstance(args, list) and 0 < len(args) < 3:
+                answer, user_id = self.inference(
+                    id=data.get("id"), data=args[0], stream=args[1] if len(args) == 2 else None
+                )
+                body = json.dumps(answer, ensure_ascii=False)
+                self.publish(body, user_id)
 
-        return super().__call__(*args, **kwargs)
+    def inference(self, id: str, data: dict, stream=False):
+        message: PromptData
+        try:
+            message = TypeAdapter(PromptData).validate_python(data)
+        except Exception as e:
+            logger.error("Failed to map message to dataclass. message: %s, error: %s", data, e)
+            return
 
+        conv = get_conv_template(self.model.promt_template)
 
-def publish(task: Task, data: MessageToMq, exchange: str, routing_key: str, **kwargs):
-    request: Context = task.request
-    with task.app.amqp.producer_pool.acquire(block=True) as producer:
-        producer.publish(
-            data.to_dict(),
-            exchange=exchange,
-            routing_key=routing_key,
-            correlation_id=request.id,
-            serializer=task.serializer,
-            retry=True,
-            retry_policy={
-                "max_retries": 1,
-                "interval_start": 0,
-                "interval_step": 1,
-                "interval_max": 1,
-            },
-            declare=None,
-            delivery_mode=1,
-        )
+        for m in message.get_chat_history_list()[:-1]:
+            conv.append_message(conv.roles[0 if m.is_user() else 1], m.content)
 
+        conv.append_message(conv.roles[2], message.get_persona())
+        conv.append_message(conv.roles[0], message.get_chat_history_list()[-1].content)
+        conv.append_message(conv.roles[1], None)
 
-def build_message(messageId, content, user_id, character_id):
-    message = MessageToMq(
-        messageId=messageId,
-        userId=user_id,
-        characterId=character_id,
-        createdAt=datetime.now(timezone.utc).isoformat(),
-        content=content,
-        fromUser=False,
-    )
-    return message
+        streamer = self.model.generate(conv.get_prompt(), **message.get_generation_args())
 
+        completion = []
 
-@app.task(bind=True, base=InferenceTask, name="inference")
-def inference(self: InferenceTask, data: dict, stream=False):
-    request: Context = self.request
-    message: PromptData
+        for token in streamer:
+            completion.append(token)
 
-    try:
-        message = TypeAdapter(PromptData).validate_python(data)
-    except Exception as e:
-        print(e)
-        return
+        completion = ("".join(completion)).strip()
+        return message.build_return_message(id, completion).to_dict(), message.get_user_id()
 
-    exchange_name = "amq.topic"
-    user_id = message.get_user_id()
-    persona = message.get_persona()
-
-    conv = get_conv_template(self.model.promt_template)
-
-    for m in message.get_chat_history_list()[:-1]:
-        conv.append_message(conv.roles[0 if m.is_user() else 1], m.content)
-
-    conv.append_message(conv.roles[2], persona)
-    conv.append_message(conv.roles[0], message.get_chat_history_list()[-1].content)
-    conv.append_message(conv.roles[1], None)
-
-    streamer = self.model.generate(conv.get_prompt(), **message.get_generation_args())
-
-    completion = []
-
-    for token in streamer:
-        completion.append(token)
-        if stream:
-            publish(
-                self,
-                message.build_return_message(request.id, token),
-                exchange_name,
-                user_id,
-            )
-
-    completion = ("".join(completion)).strip()
-    publish(self, message.build_return_message(request.id, completion), exchange_name, user_id)
-    return completion
+    def publish(self, data: str, routing_key: str):
+        self.amqp.publish(routing_key, data)

@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.utils import get_profile
 
 
-class CeleryConfig(BaseSettings):
+class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=f"env/.env.{get_profile().value}", env_file_encoding="utf-8", extra="allow"
     )
@@ -17,4 +17,4 @@ class CeleryConfig(BaseSettings):
         return self.model_dump()
 
 
-celeryConfig = CeleryConfig()
+config = Config()
