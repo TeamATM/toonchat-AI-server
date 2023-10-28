@@ -20,6 +20,7 @@ class LLMConfig(BaseSettings):
     adapter_name: str | None = None
     prompt_template: str = "Toonchat_v2"
     load_in_4bit: bool = True
+    use_fast_tokenizer: bool = True
     stopping_words: list | str = None
 
     @root_validator(pre=True)
@@ -32,9 +33,9 @@ class LLMConfig(BaseSettings):
             raise FileNotFoundError("Can not find model file")
 
         adapter_path = path.join(values.get("adapter_path"), values.get("adapter_name"))
-        if (values.get("model_type") == ModelType.LoRA and not adapter_path) or not Path(
-            adapter_path
-        ).is_dir():
+        if values.get("model_type") == ModelType.LoRA and (
+            not adapter_path or not Path(adapter_path).is_dir()
+        ):
             raise FileNotFoundError("Can not find lora file")
 
         sw = values.get("stopping_words")
