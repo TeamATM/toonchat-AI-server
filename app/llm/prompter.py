@@ -4,12 +4,12 @@ from app.data import PromptData
 
 class Prompter(metaclass=ABCMeta):
     @abstractmethod
-    def get_prompt(messages: PromptData) -> str:
+    def get_prompt(self, messages: PromptData) -> str:
         pass
 
 
 class MockPrompter(Prompter):
-    def get_prompt(messages: PromptData):
+    def get_prompt(self, messages: PromptData):
         return "Mock Prompt"
 
 
@@ -19,7 +19,7 @@ class HuggingfacePrompter(Prompter):
 
 
 class ToonchatV21Prompter(HuggingfacePrompter):
-    def get_prompt(messages: PromptData):
+    def get_prompt(self, messages: PromptData):
         tmp = []
         tmp.append(
             """아래는 사용자와의 이전 대화 내용들과 캐릭터에 대한 정보 또는 대화에 필요한 추가 컨텍스트를 제공하는 입력이 짝을 이루는 예제입니다. 요청을 적절히 완료하는 응답을 작성하세요.

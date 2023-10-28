@@ -20,7 +20,7 @@ class InferenceTask:
             llm_config.base_model_path,
             use_fast=llm_config.use_fast_tokenizer,
             quantization_config=bnb_config,
-            adaptor_path=llm_config.adapter_path if llm_config.load_in_4bit else None,
+            adaptor_path=llm_config.get_adapter_path() if llm_config.load_in_4bit else None,
         )
         self.amqp = amqp
         amqp.attach(self)
@@ -29,9 +29,7 @@ class InferenceTask:
         if isinstance(data, dict) and "id" in data:
             args = data.get("args", None)
             if isinstance(args, list) and 0 < len(args) < 3:
-                answer, user_id = self.inference(
-                    id=data.get("id"), data=args[0], stream=args[1] if len(args) == 2 else None
-                )
+                answer, user_id = self.inference(id=data.get("id"), data=args[0])
                 body = json.dumps(answer, ensure_ascii=False)
                 self.publish(body, user_id)
 

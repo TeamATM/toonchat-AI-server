@@ -20,5 +20,5 @@ class LLMFactory:
 
 llm_factory = LLMFactory()
 llm_factory.register_llm_model("Mock", models.MockLLM, prompter.MockPrompter)
-llm_factory.register_llm_model("Toonchat_v2.1", models.HuggingfaceLLM, prompter.ToonchatV23Prompter)
+llm_factory.register_llm_model("Toonchat_v2.1", models.HuggingfaceLLM, prompter.ToonchatV21Prompter)
 llm_factory.register_llm_model("Toonchat_v2.3", models.HuggingfaceLLM, prompter.ToonchatV23Prompter)

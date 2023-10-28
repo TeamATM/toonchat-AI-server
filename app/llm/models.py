@@ -82,7 +82,7 @@ class HuggingfaceLLM(LLM):
 
         encoded_prompt = self.tokenizer(prompt, return_tensors="pt", return_token_type_ids=False)
 
-        token_length = len(encoded_prompt["input_ids"])
+        token_length = len(encoded_prompt["input_ids"][0])
         logger.info(
             f"Start inference. query: {data.get_chat_history_list()[-1].content}, token_len: {token_length}"
         )
@@ -110,7 +110,7 @@ class HuggingfaceLLM(LLM):
         inference_result = decoded_output[len(prompt) :]
         inference_time = time.time() - start_time
         logger.info(
-            f"Inference finished. {(len(output[0]) - token_length)/inference_time} tokens/s"
+            f"Inference finished. result:{inference_result}, tps: {(len(output[0]) - token_length)/inference_time} tokens/s"
         )
 
         return inference_result
