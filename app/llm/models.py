@@ -1,130 +1,116 @@
-from typing import Callable
-from threading import Thread
+import time
+from abc import ABCMeta, abstractmethod
+import logging
 
-from app.models import SingletonMetaClass
-from app.utils import is_production
+from app.utils import log_execution_time
+from app.llm.prompter import Prompter
+from app.data import PromptData
+
+logger = logging.getLogger(__name__)
 
 
-class BaseLLM:
+class LLM(metaclass=ABCMeta):
+    def __init__(self, prompter: Prompter) -> None:
+        self.prompter = prompter
+
+    @abstractmethod
+    def load(self, dir_path, **kwargs):
+        pass
+
+    @abstractmethod
+    def generate(self, data: PromptData, **generation_args) -> str:
+        pass
+
+
+class MockLLM(LLM):
+    def load(self, dir_path, **kwargs):
+        pass
+
+    def generate(self, data: PromptData, **generation_args):
+        return "This is a Mock LLM"
+
+
+class HuggingfaceLLM(LLM):
     model = None
-    promt_template: str = "Toonchat_v2"
+    tokenizer = None
 
-    def generate(self, prompt: str, bot=None, **kwargs):
-        raise NotImplementedError
+    def load(self, dir_path, **kwargs) -> LLM:
+        self.load_tokenizer(dir_path, kwargs)
+        self.load_pretrained_model(dir_path, kwargs)
 
+        adaptor_path = kwargs.get("adaptor_path", None)
+        if adaptor_path:
+            self.load_peft_model(adaptor_path)
 
-class MockLLM(BaseLLM):
-    def generate(self, prompt: str, bot=None, **kwargs):
-        import time
+    @log_execution_time
+    def load_peft_model(self, adaptor_path):
+        from peft import PeftModel
 
-        # print(prompt)
-        for s in ["This", " is", " a", " mock", " result"]:
-            time.sleep(1)
-            yield s
+        logger.info("Loading Adapter to model")
+        self.model = PeftModel.from_pretrained(
+            self.model, adaptor_path, adapter_name=adaptor_path.split("/")[-1]
+        )
+        logger.info("Finished to load adapter")
 
+    def load_tokenizer(self, dir_path, kwargs):
+        from transformers import AutoTokenizer
 
-if is_production():
-    import torch
-    from transformers import StoppingCriteria
+        logger.info("Start loading Tokenizer")
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            dir_path, use_fast=kwargs.get("use_fast", True)
+        )
+        logger.info("Finished loading Tokenizer")
 
-    class LoadedLLM(BaseLLM, metaclass=SingletonMetaClass):
-        from transformers import PreTrainedTokenizerBase, PreTrainedModel
+    @log_execution_time
+    def load_pretrained_model(self, dir_path, kwargs):
+        from transformers import AutoModelForCausalLM, PreTrainedModel
 
-        isLoaded = False
-        isRunning = False
-        do_stop = False
+        logger.info("Start loading Model")
+        self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
+            dir_path,
+            quantization_config=kwargs.get("quantization_config", None),
+            device_map={"": 0},
+        )
+        logger.info("Finished to load Model")
 
-        def __init__(
-            self,
-            model: PreTrainedModel,
-            tokenizer: PreTrainedTokenizerBase,
-            promt_template: str,
-            stopping_words: list = None,
-        ) -> None:
-            from transformers import TextIteratorStreamer, StoppingCriteriaList
+    @log_execution_time
+    def generate(self, data: PromptData, **generation_args):
+        import torch
 
-            self.model = model
-            self.tokenizer = tokenizer
-            self.promt_template = promt_template
-            self.isLoaded = True
-            self.stopping_criteria = None
-            self.streamer = TextIteratorStreamer(
-                tokenizer, timeout=10, skip_prompt=True, skip_special_tokens=True
-            )
+        start_time = time.time()
+        prompt = self.prompter.get_prompt(data)
 
-            if stopping_words:
-                stop_words_ids = [
-                    tokenizer(stop_word, return_tensors="pt")["input_ids"].squeeze()
-                    for stop_word in stopping_words
-                ]
-                self.stopping_criteria = StoppingCriteriaList(
-                    [
-                        StoppingCriteriaSub(stops=stop_words_ids, callback=self.on_stop_generate),
-                        _StopEverythingStoppingCriteria(self),
-                    ]
-                )
+        encoded_prompt = self.tokenizer(prompt, return_tensors="pt", return_token_type_ids=False)
 
-        def on_stop_generate(self):
-            self.isRunning = False
+        token_length = len(encoded_prompt["input_ids"])
+        logger.info(
+            f"Start inference. query: {data.get_chat_history_list()[-1].content}, token_len: {token_length}"
+        )
 
-        def stop_generate(self):
-            self.do_stop = True
+        generate_kwargs = dict(
+            **encoded_prompt.to(0),
+            max_time=15,
+            max_new_tokens=256,
+            do_sample=True,
+            early_stopping=True,
+            eos_token_id=2,
+            temperature=0.1,
+        )
+        if generation_args:
+            generate_kwargs.update(generation_args)
 
-        def generate(self, prompt: str, bot=None, **kwargs):
-            from peft.peft_model import PeftModel
-            from app.llm.utils import set_adapter
+        try:
+            with torch.no_grad():
+                output = self.model.generate(**generate_kwargs)
+        except Exception:
+            logger.error("Error occured while generating answer.")
+            return ""
 
-            generate_kwargs = dict(
-                **self.tokenizer(
-                    prompt,
-                    return_tensors="pt",
-                    return_token_type_ids=False,
-                ).to(0),
-                max_time=15,  # 최대 생성 시간 (s)
-                streamer=self.streamer,
-                max_new_tokens=512,
-                do_sample=True,
-                early_stopping=True,
-                eos_token_id=2,
-                stopping_criteria=self.stopping_criteria,
-                temperature=0.1,
-            )
-            if kwargs:
-                generate_kwargs.update(kwargs)
+        decoded_output = self.tokenizer.decode(output[0], skip_special_tokens=True).strip()
+        inference_result = decoded_output[len(prompt) :]
+        inference_time = time.time() - start_time
+        logger.info(
+            f"Inference finished. {(len(output[0]) - token_length)/inference_time} tokens/s"
+        )
 
-            self.isRunning = True
-            self.do_stop = False
-
-            if bot and isinstance(self.model, PeftModel):
-                set_adapter(self.model, bot)
-
-            thread = Thread(target=self.model.generate, kwargs=generate_kwargs)
-
-            thread.start()
-            return self.streamer
-
-    class StoppingCriteriaSub(StoppingCriteria):
-        def __init__(self, stops=None, callback: Callable = None):
-            super().__init__()
-            self.stops = [stop.to("cuda") for stop in stops] if stops else []
-            self.callback = callback
-
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
-            for stop in self.stops:
-                if torch.all((stop == input_ids[0][-len(stop) :])).item():
-                    if self.callback:
-                        self.callback()
-                    return True
-
-            return False
-
-    class _StopEverythingStoppingCriteria(StoppingCriteria):
-        def __init__(self, loaded_llm: LoadedLLM) -> None:
-            self.loaded_llm = loaded_llm
-
-        def __call__(self, input_ids, scores) -> bool:
-            if self.loaded_llm.do_stop:
-                self.loaded_llm.do_stop = False
-                return True
-
-            return False
+        return inference_result
