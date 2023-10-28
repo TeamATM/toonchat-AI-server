@@ -179,7 +179,7 @@ class Amqp(object):
             self.reject_message(basic_deliver.delivery_tag, e, False)
             return
 
-        logger.info(
+        logger.debug(
             "Received message # %s from %s: %s",
             basic_deliver.delivery_tag,
             properties.app_id,
@@ -194,7 +194,7 @@ class Amqp(object):
             self.reject_message(basic_deliver.delivery_tag, e)
 
     def acknowledge_message(self, delivery_tag):
-        logger.info("Acknowledging message %s", delivery_tag)
+        logger.debug("Acknowledging message %s", delivery_tag)
         self._channel.basic_ack(delivery_tag)
 
     def reject_message(self, delivery_tag, exception: Exception, requeue=False):
@@ -221,7 +221,7 @@ class Amqp(object):
         self._connection.ioloop.start()
 
     def publish(self, routing_key, body):
-        logger.info("Publishing message to user: %s, message: %s", routing_key, body)
+        logger.debug("Publishing message to user: %s, message: %s", routing_key, body)
         try:
             property = BasicProperties(content_type="application/json", content_encoding="utf-8")
             self._channel.basic_publish(self.publish_exchange, routing_key, body, property)
