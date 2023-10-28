@@ -3,20 +3,25 @@ import logging
 from pydantic import TypeAdapter
 
 from app.message_queue.amqp import Amqp
-from app.llm.utils import load_model
-from app.llm.models import BaseLLM
-from app.llm.conversations import get_conv_template
 from app.data import PromptData
+from app.llm.factory import llm_factory
+from app.llm.config import llm_config, bnb_config
 
 logger = logging.getLogger(__name__)
 
 
 class InferenceTask:
-    model: BaseLLM = None
+    model = None
     amqp: Amqp
 
     def __init__(self, amqp) -> None:
-        self.model = load_model()
+        self.model = llm_factory.create_llm(llm_config.prompt_template, llm_config.base_model_path)
+        self.model.load(
+            llm_config.base_model_path,
+            use_fast=llm_config.use_fast_tokenizer,
+            quantization_config=bnb_config,
+            adaptor_path=llm_config.adapter_path if llm_config.load_in_4bit else None,
+        )
         self.amqp = amqp
         amqp.attach(self)
 
@@ -30,7 +35,7 @@ class InferenceTask:
                 body = json.dumps(answer, ensure_ascii=False)
                 self.publish(body, user_id)
 
-    def inference(self, id: str, data: dict, stream=False):
+    def inference(self, id: str, data: dict):
         message: PromptData
         try:
             message = TypeAdapter(PromptData).validate_python(data)
@@ -38,24 +43,8 @@ class InferenceTask:
             logger.error("Failed to map message to dataclass. message: %s, error: %s", data, e)
             return
 
-        conv = get_conv_template(self.model.promt_template)
-
-        for m in message.get_chat_history_list()[:-1]:
-            conv.append_message(conv.roles[0 if m.is_user() else 1], m.content)
-
-        conv.append_message(conv.roles[2], message.get_persona())
-        conv.append_message(conv.roles[0], message.get_chat_history_list()[-1].content)
-        conv.append_message(conv.roles[1], None)
-
-        streamer = self.model.generate(conv.get_prompt(), **message.get_generation_args())
-
-        completion = []
-
-        for token in streamer:
-            completion.append(token)
-
-        completion = ("".join(completion)).strip()
-        return message.build_return_message(id, completion).to_dict(), message.get_user_id()
+        completion_result = self.model.generate(message, **message.get_generation_args())
+        return message.build_return_message(id, completion_result).to_dict(), message.get_user_id()
 
     def publish(self, data: str, routing_key: str):
         self.amqp.publish(routing_key, data)

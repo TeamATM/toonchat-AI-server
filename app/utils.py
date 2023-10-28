@@ -1,5 +1,9 @@
 from os import environ
+import time
+import logging
 from app.constant import Profile
+
+logger = logging.getLogger(__name__)
 
 
 # Replace multiple string pairs in a string
@@ -23,3 +27,15 @@ def get_profile():
 
 def is_production():
     return get_profile() == Profile.PRODUCTION
+
+
+def log_execution_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logger.info(f"Execution time of function {func.__name__}: {execution_time}s")
+        return result
+
+    return wrapper
