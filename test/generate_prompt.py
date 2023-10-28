@@ -1,16 +1,28 @@
 import os
 import sys
+import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from app.llm.conversations import get_conv_template
+from app.data import PromptData, History, Message, GenerationArgs
 
-conv = get_conv_template("Toonchat_v2.1")
-conv.append_message(conv.roles[0], "hi")
-conv.append_message(conv.roles[1], "hi, how can i help you?")
-conv.append_message(conv.roles[0], "hi")
-conv.append_message(conv.roles[1], "hi, how can i help you?")
-conv.append_message(conv.roles[2], "system message")
-conv.append_message(conv.roles[0], "hi")
-conv.append_message(conv.roles[1], "hi, how can i help you?")
+prompt_data = PromptData(
+    "This is a Persona",
+    ["Reference text 1", "Reference text 2"],
+    History(
+        "history_id",
+        "userId",
+        0,
+        [
+            Message("message_id", None, datetime.datetime.now(), "Message content from user", True),
+            Message("message_id", None, datetime.datetime.now(), "Message content from bot", False),
+            Message("message_id", None, datetime.datetime.now(), "Message content from user", True),
+        ],
+    ),
+    GenerationArgs(0.3, 1.5),
+)
 
-print(conv.get_prompt())
+from app.llm.prompter import ToonchatV23Prompter
+
+prompter = ToonchatV23Prompter()
+prompt = prompter.get_prompt(prompt_data)
+print(prompt)

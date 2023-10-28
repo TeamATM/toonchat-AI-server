@@ -202,3 +202,4 @@ pyrightconfig.json
 env.py
 data/**
 test/**
+*.ipynb
