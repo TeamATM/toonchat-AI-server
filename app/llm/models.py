@@ -62,10 +62,9 @@ class HuggingfaceLLM(LLM):
         from transformers import AutoTokenizer
 
         logger.info("Start loading Tokenizer")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            dir_path, use_fast=kwargs.get("use_fast", True)
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(dir_path)
         self.tokenizer.model_max_length = 4096
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         logger.info("Finished loading Tokenizer")
 
     @log_execution_time
@@ -87,7 +86,7 @@ class HuggingfaceLLM(LLM):
         start_time = time.time()
         prompt = self.prompter.get_prompt(data)
 
-        encoded_prompt = self.tokenizer(
+        encoded_prompt = self.tokenizer.encode(
             prompt,
             add_special_tokens=False,
             padding=False,
@@ -101,21 +100,21 @@ class HuggingfaceLLM(LLM):
             f"Start inference. query: {data.get_chat_history_list()[-1].content}, token_len: {token_length}"
         )
 
-        generate_kwargs = {
-            "inputs": encoded_prompt.to(0),
-            "max_time": 15,
+        generation_config = {
+            "max_time": 10,
             "max_new_tokens": 256,
             "do_sample": True,
             "temperature": 0.3,
             "repetition_penalty": 1.3,
-            "early_stopping": True,
-            "num_beams": 2,
+            # early_stopping = True,
+            # num_beams = 2,
         }
+
         if generation_args:
-            generate_kwargs.update(generation_args)
+            generation_config.update(generation_args)
 
         try:
-            output = self.model.generate(**generate_kwargs)
+            output = self.model.generate(inputs=encoded_prompt.to(0), **generation_config)
         except Exception as e:
             logger.error("Error occured while generating answer.\n%s", e)
             return ""
