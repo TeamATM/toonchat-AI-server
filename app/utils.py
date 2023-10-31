@@ -1,21 +1,9 @@
-from os import environ
+from os import environ, path
 import time
 import logging
 from app.constant import Profile
 
 logger = logging.getLogger(__name__)
-
-
-# Replace multiple string pairs in a string
-def replace_all(text, dic):
-    for i, j in dic.items():
-        text = text.replace(i, j)
-
-    return text
-
-
-def print_red(text):
-    print(f"\033[31m{text}\033[0m")
 
 
 def get_profile():
@@ -27,6 +15,14 @@ def get_profile():
 
 def is_production():
     return get_profile() == Profile.PRODUCTION
+
+
+def is_local():
+    return get_profile() == Profile.LOCAL
+
+
+def path_concat(*args):
+    return path.join(*args)
 
 
 def log_execution_time(func):

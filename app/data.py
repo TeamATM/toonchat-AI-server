@@ -43,23 +43,13 @@ class PromptData:
         return self.history.characterId
 
     def get_persona(self) -> str:
-        persona = self.persona
-        if not persona:
-            character_id = self.get_character_id()
-            persona = (
-                "내 이름은 이영준이다. 1986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 매력적인 외모를 가지고 있다. 나는 카리스마가 있다. 나는 자기애가 강하다."
-                if character_id == 0
-                else "내 이름은 김미소이다. 나는 1990년 4월 5월생인 29살 여자이다. 나는 이영준 부회장의 개인 비서이다. 나는 뛰어난 지능을 가지고 있다. 나는 높은 의사소통 능력을 가지고 있다. 나는 일찍부터 사회생활에 뛰어들었다. 나는 퇴사를 고려중이다."
-                if character_id == 1
-                else ""
-            )
-        elif isinstance(persona, list):
-            persona = " ".join(persona)
+        return " ".join(self.persona) if isinstance(self.persona, list) else self.persona
 
-        return persona
-
-    def get_reference(self) -> list[str]:
-        return self.reference
+    def get_reference(self) -> str:
+        if isinstance(self.reference, list):
+            return " ".join(self.reference)
+        else:
+            return self.reference
 
     def get_chat_history_list(self) -> list[Message]:
         return self.history.messages

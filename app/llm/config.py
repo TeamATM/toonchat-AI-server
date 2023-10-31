@@ -1,62 +1,50 @@
-from os import path
 from pathlib import Path
 from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.llm.constants import ModelType
-from app.utils import is_production
-
-if is_production():
-    from transformers import BitsAndBytesConfig
-    from torch import bfloat16
+from app.utils import is_local, path_concat
 
 
 class LLMConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file="env/.env", env_file_encoding="utf-8", extra="allow")
 
     model_type: ModelType
-    base_model_path: str
-    adapter_path: str | None = None
+    pretrained_model_name_or_path: str
+    adapter_dir: str | None = None
     adapter_name: str | None = None
-    prompt_template: str = "Toonchat_v2"
+    prompt_template: str = "Toonchat_v2.1"
     load_in_4bit: bool = True
-    use_fast_tokenizer: bool = True
-    stopping_words: list | str = None
+    model_max_length: int
 
     @root_validator(pre=True)
     def a(cls, values: dict):
-        if not is_production():
+        if is_local():
             return values
 
-        base_model_path = values.get("base_model_path")
-        if not base_model_path or not Path(base_model_path).is_dir():
+        pretrained_model_name_or_path = values.get("pretrained_model_name_or_path")
+        if not pretrained_model_name_or_path or not Path(pretrained_model_name_or_path).is_dir():
             raise FileNotFoundError("Can not find model file")
 
-        adapter_path = path.join(values.get("adapter_path"), values.get("adapter_name"))
+        adapter_path = path_concat(values.get("adapter_path"), values.get("adapter_name"))
         if values.get("model_type") == ModelType.LoRA and (
             not adapter_path or not Path(adapter_path).is_dir()
         ):
             raise FileNotFoundError("Can not find lora file")
 
-        sw = values.get("stopping_words")
-        if sw and isinstance(sw, str):
-            values["stopping_words"] = sw.split(", ")
-
         return values
 
     def get_adapter_path(self, adapter_name: str = None):
-        return path.join(self.adapter_path, adapter_name if adapter_name else self.adapter_name)
+        return path_concat(self.adapter_dir, adapter_name if adapter_name else self.adapter_name)
 
 
 llm_config = LLMConfig()
-
-bnb_config = (
-    BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_use_double_quant=True,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_dtype=bfloat16,
-    )
-    if llm_config.load_in_4bit
-    else None
-)
+generation_config = {
+    "max_time": 10,
+    "max_new_tokens": 256,
+    "do_sample": True,
+    "temperature": 0.3,
+    "repetition_penalty": 1.3,
+    # early_stopping = True,
+    # num_beams = 2,
+}

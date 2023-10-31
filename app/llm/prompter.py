@@ -1,8 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from app.data import PromptData
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Prompter(metaclass=ABCMeta):
+    def __init__(self, **kwargs) -> None:
+        logger.info("Selected Prompter: %s", self.__class__.__name__)
+
     @abstractmethod
     def get_prompt(self, messages: PromptData) -> str:
         pass
@@ -13,12 +19,7 @@ class MockPrompter(Prompter):
         return "Mock Prompt"
 
 
-class HuggingfacePrompter(Prompter):
-    def __init__(self) -> None:
-        pass
-
-
-class ToonchatV21Prompter(HuggingfacePrompter):
+class ToonchatV21Prompter(Prompter):
     def get_prompt(self, messages: PromptData):
         tmp = []
         tmp.append(
@@ -37,12 +38,12 @@ class ToonchatV21Prompter(HuggingfacePrompter):
         return "\n".join(tmp)
 
 
-class ToonchatV23Prompter(HuggingfacePrompter):
-    def get_prompt(self, data: PromptData):
+class ToonchatV23Prompter(Prompter):
+    def get_prompt(self, messages: PromptData):
         tmp = []
-        tmp.append(f"### Persona: {data.get_persona()}")
-        tmp.append(f"### Reference: {' '.join(data.get_reference())}")
-        for message in data.get_chat_history_list():
+        tmp.append(f"### Persona: {messages.get_persona()}")
+        tmp.append(f"### Reference: {messages.get_reference()}")
+        for message in messages.get_chat_history_list():
             tmp.append(
                 f"### {'Human' if message.fromUser else 'Assistant'}: {message.content}{'' if message.fromUser else '</s>'}"
             )
@@ -50,7 +51,7 @@ class ToonchatV23Prompter(HuggingfacePrompter):
         return " ".join(tmp)
 
 
-class ChatMlPrompter(HuggingfacePrompter):
+class ChatMlPrompter(Prompter):
     def get_prompt(self, messages: PromptData) -> str:
         tmp = []
         tmp.append(
@@ -60,9 +61,9 @@ class ChatMlPrompter(HuggingfacePrompter):
             tmp.append(
                 f"<|im_start|>system\n아래는 당신의 페르소나입니다. 유저의 질문에 대하여 다음의 페르소나를 고려하여 적절한 대답을 완성하세요. {messages.get_persona()}<|im_end|>"
             )
-        if isinstance(messages.get_reference(), list) and len(messages.get_reference()[0]) > 1:
+        if messages.get_reference():
             tmp.append(
-                f"<|im_start|>system\n다음은 유저의 질문과 관련된 소설의 내용입니다. 유저의 질문에 대해 다음의 내용을 바탕으로 적절한 대답을 완성하세요. {messages.get_reference()[0]}<|im_end|>"
+                f"<|im_start|>system\n다음은 유저의 질문과 관련된 소설의 내용입니다. 유저의 질문에 대해 다음의 내용을 바탕으로 적절한 대답을 완성하세요. {messages.get_reference()}<|im_end|>"
             )
         for i, message in enumerate(messages.get_chat_history_list()):
             if i == 0 and not message.fromUser:
@@ -73,3 +74,20 @@ class ChatMlPrompter(HuggingfacePrompter):
             )
         tmp.append("<|im_start|>assistant\n")
         return "\n".join(tmp)
+
+
+class HuggingfaceTokenizerPrompter(Prompter):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        from transformers import PreTrainedTokenizer
+
+        self.tokenizer: PreTrainedTokenizer = kwargs.pop("tokenizer")
+
+    def get_prompt(self, messages: PromptData) -> str:
+        chat_messages = [
+            {"role": "user" if message.fromUser else "assistant", "content": message.content}
+            for message in messages.get_chat_history_list()
+        ]
+        return self.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )

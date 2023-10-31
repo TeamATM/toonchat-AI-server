@@ -1,6 +1,7 @@
 from typing import Dict, Tuple
 import app.llm.prompter as prompter
 import app.llm.models as models
+from app.llm.config import llm_config
 
 
 class LLMFactory:
@@ -14,8 +15,9 @@ class LLMFactory:
         if model_name not in self.llm_models:
             raise ValueError(f"Unsupported LLM model: {model_name}")
 
-        prompter = self.llm_models[model_name][1]()
-        return self.llm_models[model_name][0](prompter)
+        model_class, prompter_class = self.llm_models[model_name]
+
+        return model_class(prompter_class=prompter_class, **llm_config.model_dump())
 
 
 llm_factory = LLMFactory()

@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from app.message_queue.amqp import Amqp
 from app.data import PromptData
 from app.llm.factory import llm_factory
-from app.llm.config import llm_config, bnb_config
+from app.llm.config import llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,8 @@ class InferenceTask:
     amqp: Amqp
 
     def __init__(self, amqp) -> None:
-        self.model = llm_factory.create_llm(llm_config.prompt_template, llm_config.base_model_path)
-        self.model.load(
-            llm_config.base_model_path,
-            use_fast=llm_config.use_fast_tokenizer,
-            quantization_config=bnb_config,
-            adaptor_path=llm_config.get_adapter_path() if llm_config.load_in_4bit else None,
+        self.model = llm_factory.create_llm(
+            llm_config.prompt_template, llm_config.pretrained_model_name_or_path
         )
         self.amqp = amqp
         amqp.attach(self)
