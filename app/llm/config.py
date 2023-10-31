@@ -26,7 +26,7 @@ class LLMConfig(BaseSettings):
         if not pretrained_model_name_or_path or not Path(pretrained_model_name_or_path).is_dir():
             raise FileNotFoundError("Can not find model file")
 
-        adapter_path = path_concat(values.get("adapter_path"), values.get("adapter_name"))
+        adapter_path = path_concat(values.get("adapter_dir"), values.get("adapter_name"))
         if values.get("model_type") == ModelType.LoRA and (
             not adapter_path or not Path(adapter_path).is_dir()
         ):
