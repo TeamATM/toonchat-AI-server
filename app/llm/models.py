@@ -72,7 +72,7 @@ class HuggingfaceLLM(LLM):
     def generate(self, data: PromptData, **generation_kwargs):
         start_time = time.time()
         prompt = self.prompter.get_prompt(data)
-        encoded_prompt = tokenizer_encode(prompt)
+        encoded_prompt = tokenizer_encode(self.tokenizer, prompt)
 
         token_length = len(encoded_prompt[0])
         logger.info(
@@ -81,7 +81,7 @@ class HuggingfaceLLM(LLM):
 
         try:
             output = self.model.generate(
-                inputs=encoded_prompt.to(0), **generation_config, **generation_kwargs
+                inputs=encoded_prompt.to(0), **{**generation_config, **generation_kwargs}
             )
         except Exception as e:
             logger.error("Error occured while generating answer.\n%s", e)
