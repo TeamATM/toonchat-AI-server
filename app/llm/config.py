@@ -3,11 +3,13 @@ from pydantic import root_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.llm.constants import ModelType
-from app.utils import is_local, path_concat
+from app.utils import is_local, path_concat, get_profile
 
 
 class LLMConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file="env/.env", env_file_encoding="utf-8", extra="allow")
+    model_config = SettingsConfigDict(
+        env_file=f"env/.env.{get_profile().value}", env_file_encoding="utf-8", extra="allow"
+    )
 
     model_type: ModelType
     pretrained_model_name_or_path: str

@@ -50,7 +50,7 @@ class HuggingfaceLLM(LLM):
         from transformers import AutoModelForCausalLM, PreTrainedModel
         import torch
 
-        logger.info("Start loading Model")
+        logger.info("Start loading Model from path: %s", pretrained_model_name_or_path)
         self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
             pretrained_model_name_or_path,
             torch_dtype=torch.bfloat16,
@@ -63,7 +63,7 @@ class HuggingfaceLLM(LLM):
     def load_peft_model(self, adaptor_path):
         from peft.peft_model import PeftModel
 
-        logger.info("Loading Adapter to model")
+        logger.info("Loading Adapter to model from path: %s", adaptor_path)
         self.model = PeftModel.from_pretrained(
             self.model, adaptor_path, adapter_name=adaptor_path.split("/")[-1]
         )
