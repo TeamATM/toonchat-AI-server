@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 from app.utils import log_execution_time, path_concat
-from app.data import PromptData
+from app.message_queue.data import PromptData
 from app.llm.prompter import Prompter
 from app.llm.constants import ModelType
 from app.llm.config import llm_config, generation_config
