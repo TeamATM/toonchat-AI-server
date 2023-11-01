@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from app.data import PromptData
+from app.message_queue.data import PromptData
 import logging
 
 logger = logging.getLogger(__name__)

@@ -4,7 +4,7 @@ from pydantic import TypeAdapter
 
 from app.message_queue.amqp import Amqp
 from app.message_queue.ampq_observer import AmqpObserver
-from app.data import PromptData
+from app.message_queue.data import PromptData
 from app.llm.factory import llm_factory
 from app.llm.config import llm_config
 
