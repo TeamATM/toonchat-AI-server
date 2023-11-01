@@ -11,5 +11,4 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 amqp = Amqp(Config())
 task = InferenceTask(amqp)
-amqp.attach(task)
 amqp.run()

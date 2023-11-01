@@ -7,6 +7,7 @@ from pika.channel import Channel
 from pika.spec import Basic, BasicProperties
 
 from app.message_queue.config import Config
+from app.message_queue.ampq_observer import AmqpObserver
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -14,7 +15,7 @@ logger.addHandler(logging.StreamHandler())
 
 class Amqp(object):
     publish_exchange = "amq.topic"
-    observers = {}
+    observers: dict[str, AmqpObserver] = {}
 
     def __init__(self, config: Config) -> None:
         self.should_reconnect = True
@@ -33,11 +34,11 @@ class Amqp(object):
 
         self._prefetch_count = 1
 
-    def attach(self, observer: object):
+    def attach(self, observer: AmqpObserver):
         logger.info("Observer %s attached", observer.__class__.__name__)
         self.observers[observer.__class__.__name__] = observer
 
-    def detach(self, observer: object):
+    def detach(self, observer: AmqpObserver):
         logger.info("Observer %s detached", observer.__class__.__name__)
         self.observers.pop(observer.__class__.__name__, observer, None)
 
