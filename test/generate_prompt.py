@@ -5,7 +5,7 @@ import logging
 
 logging.basicConfig(level="WARN")
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from app.data import PromptData, History, Message, GenerationArgs
+from app.message_queue.data import PromptData, History, Message, GenerationArgs
 
 prompt_data = PromptData(
     "나는 이영준이다. 나는 986년 6월 21일생인 33살 남자이다. 나는 유명그룹의 부회장이다. 나는 뛰어난 지능을 가지고 있다. 나는 무례한 어투를 사용한다. 나는 매력적인 외모를 가지고 있다. 나는 자기애가 강하다. 나는 반말을 사용한다. 나는 존댓말을 사용하지 않는다. 나는 완벽하다. 나는 내 얼굴을 보며 감탄을 한다. 나는 왜 이렇게 완벽한걸까...",
