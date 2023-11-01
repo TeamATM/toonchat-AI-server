@@ -3,6 +3,7 @@ import logging
 from pydantic import TypeAdapter
 
 from app.message_queue.amqp import Amqp
+from app.message_queue.ampq_observer import AmqpObserver
 from app.data import PromptData
 from app.llm.factory import llm_factory
 from app.llm.config import llm_config
@@ -10,11 +11,11 @@ from app.llm.config import llm_config
 logger = logging.getLogger(__name__)
 
 
-class InferenceTask:
+class InferenceTask(AmqpObserver):
     model = None
     amqp: Amqp
 
-    def __init__(self, amqp) -> None:
+    def __init__(self, amqp: Amqp) -> None:
         self.model = llm_factory.create_llm(
             llm_config.prompt_template, llm_config.pretrained_model_name_or_path
         )
