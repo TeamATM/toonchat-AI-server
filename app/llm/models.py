@@ -64,9 +64,7 @@ class HuggingfaceLLM(LLM):
         from peft.peft_model import PeftModel
 
         logger.info("Loading Adapter to model from path: %s", adaptor_path)
-        self.model = PeftModel.from_pretrained(
-            self.model, adaptor_path, adapter_name=adaptor_path.split("/")[-1]
-        )
+        self.model = PeftModel.from_pretrained(self.model, adaptor_path, adapter_name="default")
         logger.info("Finished to load adapter")
 
     def generate(self, data: PromptData, **generation_kwargs):
@@ -113,12 +111,13 @@ class HuggingfaceLLM(LLM):
         if self.model.active_adapter == adapter_name:
             return
 
+        adapter = "default"
         if adapter_name not in self.model.peft_config:
             adapter_path = Path(llm_config.get_adapter_path(adapter_name))
             if adapter_path.is_dir():
                 try:
                     self.model.load_adapter(adapter_path, adapter_name=adapter_name)
-                    self.model.set_adapter(adapter_name)
+                    adapter = adapter_name
                 except Exception as e:
                     logger.error("Can not load adpater name %s\n%s", adapter_name, e)
-                    return
+        self.model.set_adapter(adapter)

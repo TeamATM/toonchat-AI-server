@@ -7,6 +7,7 @@ from app.message_queue.ampq_observer import AmqpObserver
 from app.message_queue.data import PromptData
 from app.llm.factory import llm_factory
 from app.llm.config import llm_config
+from app.llm.models import HuggingfaceLLM
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ class InferenceTask(AmqpObserver):
             logger.error("Failed to map message to dataclass. message: %s, error: %s", data, e)
             return
 
+        if isinstance(self.model, HuggingfaceLLM):
+            self.model.set_adapter(str(message.get_character_id()))
         completion_result = self.model.generate(message, **message.get_generation_args())
         return message.build_return_message(id, completion_result).to_dict(), message.get_user_id()
 
