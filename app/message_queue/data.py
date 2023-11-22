@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -31,6 +32,7 @@ class GenerationArgs:
 
 @dataclass
 class PromptData:
+    greetingMessage: str = None
     persona: str
     reference: list[str]
     history: History
@@ -41,6 +43,18 @@ class PromptData:
 
     def get_character_id(self) -> int:
         return self.history.characterId
+
+    def get_greeting_message(self) -> list[dict] | None:
+        if not self.greetingMessage:
+            return None
+        try:
+            data = json.loads(self.greetingMessage)
+            assert isinstance(data, list)
+            for chat in data:
+                assert isinstance(chat, dict) and "role" in chat and "content" in chat
+            return data
+        except (AssertionError, Exception):
+            return {"role": "assistant", "content": self.greetingMessage}
 
     def get_persona(self) -> str:
         return " ".join(self.persona) if isinstance(self.persona, list) else self.persona

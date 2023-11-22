@@ -72,7 +72,7 @@ class ChatMlPrompter(Prompter):
             tmp.append(
                 f"<|im_start|>{'user' if message.fromUser else 'assistant'}\n{message.content}<|im_end|>"
             )
-        tmp.append("<|im_start|>assistant\n")
+        # tmp.append("<|im_start|>assistant\n")
         return "\n".join(tmp)
 
 
@@ -88,6 +88,30 @@ class HuggingfaceTokenizerPrompter(Prompter):
             {"role": "user" if message.fromUser else "assistant", "content": message.content}
             for message in messages.get_chat_history_list()
         ]
+        return self.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )
+
+
+class ToonchatV40Prompter(HuggingfaceTokenizerPrompter):
+    def get_prompt(self, messages: PromptData) -> str:
+        chat_messages = []
+        sys_msg = (
+            "당신은 현재 롤플레이 중입니다. 당신은 주어진 캐릭터 정보에 기반하여 행동해야 합니다.\n\n"
+            f"{messages.get_persona()}\n\n"
+            f"{messages.get_reference()}\n\n"
+            "언제나 캐릭터성을 유지해야하며, 당신이 마치 해당 캐릭터인 것처럼 메시지를 생성하세요."
+        )
+        chat_messages.append({"role": "system", "content": sys_msg})
+        greeting_message = messages.get_greeting_message()
+        if greeting_message:
+            chat_messages.extend(greeting_message)
+        chat_messages.extend(
+            [
+                {"role": "user" if message.fromUser else "assistant", "content": message.content}
+                for message in messages.get_chat_history_list()
+            ]
+        )
         return self.tokenizer.apply_chat_template(
             chat_messages, tokenize=False, add_generation_prompt=True
         )
