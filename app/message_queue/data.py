@@ -32,11 +32,11 @@ class GenerationArgs:
 
 @dataclass
 class PromptData:
-    greetingMessage: str = None
     persona: str
     reference: list[str]
     history: History
-    generationArgs: GenerationArgs
+    generationArgs: dict
+    greetingMessage: str = None
 
     def get_user_id(self) -> str:
         return self.history.userId
@@ -54,7 +54,7 @@ class PromptData:
                 assert isinstance(chat, dict) and "role" in chat and "content" in chat
             return data
         except (AssertionError, Exception):
-            return {"role": "assistant", "content": self.greetingMessage}
+            return [{"role": "assistant", "content": self.greetingMessage}]
 
     def get_persona(self) -> str:
         return " ".join(self.persona) if isinstance(self.persona, list) else self.persona
@@ -69,7 +69,7 @@ class PromptData:
         return self.history.messages
 
     def get_generation_args(self):
-        return asdict(self.generationArgs)
+        return self.generationArgs
 
     def build_return_message(self, message_id: str, content: str):
         return MessageToMq(

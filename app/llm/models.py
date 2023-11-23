@@ -44,6 +44,7 @@ class HuggingfaceLLM(LLM):
             self.load_peft_model(path_concat(kwargs.pop("adapter_dir"), kwargs.pop("adapter_name")))
 
         self.model.eval()
+        self.model.config.use_cache = True
 
     @log_execution_time
     def load_pretrained_model(self, pretrained_model_name_or_path, kwargs: dict):
@@ -71,6 +72,7 @@ class HuggingfaceLLM(LLM):
         start_time = time.time()
         prompt = self.prompter.get_prompt(data)
         encoded_prompt = tokenizer_encode(self.tokenizer, prompt)
+        decoded_prompt = tokenizer_decode(self.tokenizer, encoded_prompt)
 
         token_length = len(encoded_prompt[0])
         logger.info(
@@ -86,13 +88,13 @@ class HuggingfaceLLM(LLM):
             return ""
 
         decoded_output = tokenizer_decode(self.tokenizer, output)
-        inference_result = self.extract_answer(decoded_output, prompt)
+        inference_result = self.extract_answer(decoded_output, decoded_prompt)
         inference_time = time.time() - start_time
         logger.info(
             f"Inference finished. result:{inference_result}, tps: {(len(output[0]) - token_length)/inference_time} tokens/s"
         )
 
-        return inference_result
+        return inference_result.split(".")[0] + "."
 
     def extract_answer(self, decoded_output: str, prompt: str):
         return decoded_output[
@@ -116,8 +118,11 @@ class HuggingfaceLLM(LLM):
             adapter_path = Path(llm_config.get_adapter_path(adapter_name))
             if adapter_path.is_dir():
                 try:
+                    logger.info("trying to load adapter with path: %s", adapter_path)
                     self.model.load_adapter(adapter_path, adapter_name=adapter_name)
+                    logger.info("load adapter: %s", adapter_name)
                     adapter = adapter_name
                 except Exception as e:
                     logger.error("Can not load adpater name %s\n%s", adapter_name, e)
+        logger.info("set adapter: %s", adapter)
         self.model.set_adapter(adapter)

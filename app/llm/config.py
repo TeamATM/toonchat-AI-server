@@ -44,9 +44,6 @@ llm_config = LLMConfig()
 generation_config = {
     "max_time": 10,
     "max_new_tokens": 256,
-    "do_sample": True,
-    "temperature": 0.3,
-    "repetition_penalty": 1.3,
-    # early_stopping = True,
-    # num_beams = 2,
+    "temperature": 0.25,
+    "repetition_penalty": 1.5,
 }
